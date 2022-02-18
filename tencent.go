@@ -2,6 +2,7 @@ package weather
 
 import (
 	"errors"
+	"html/template"
 	"net/url"
 	"regexp"
 	"strconv"
@@ -78,8 +79,27 @@ var tencentWeatherInfoMap = [...]itemTencentWeather{
 	{Name: "风", Value: "icon-wind", Code: -1},
 }
 
+const _EMPTY_ICON = template.HTML("")
+
+func GetSVGCodeByName(name string) template.HTML {
+	if name == "" {
+		return _EMPTY_ICON
+	}
+
+	icon := iconMap[name]
+	if icon == "" {
+		return _EMPTY_ICON
+	}
+
+	return template.HTML(icon)
+}
+
 // 解析来自腾讯天气的接口数据（中国气象网）
 func GetWeatherByLocation(location string) (code int, degree int, humidity int, updateTime string, err error) {
+
+	if location == "" {
+		return 0, 0, 0, "", errors.New("缺少请求参数")
+	}
 
 	province := ""
 	city := ""
