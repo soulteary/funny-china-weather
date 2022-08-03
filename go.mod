@@ -1,6 +1,6 @@
 module github.com/soulteary/funny-china-weather
 
-go 1.17
+go 1.19
 
 require github.com/tdewolff/minify/v2 v2.10.0
 
