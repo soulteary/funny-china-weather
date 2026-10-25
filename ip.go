@@ -44,9 +44,9 @@ func getMyIPLocation(ctx context.Context, client httpDoer) (string, error) {
 		return "", errors.New("ipip: 非境内IP地址，放弃继续解析 :(")
 	}
 
-	province, city := location[1], location[2]
-	if province == "北京" || province == "上海" || province == "重庆" || province == "天津" {
-		return province + "市", nil
+	parsed, err := normalizeLocationFields(location[1], location[2])
+	if err != nil {
+		return "", fmt.Errorf("ipip: invalid data.location: %w", err)
 	}
-	return province + "省" + city + "市", nil
+	return parsed.String(), nil
 }

@@ -82,7 +82,7 @@ func TestGetWeatherRejectsInvalidLocationBeforeRequest(t *testing.T) {
 		t.Fatal("invalid location triggered an HTTP request")
 		return nil, nil
 	})}
-	for _, location := range []string{"", "北京", "invalid"} {
+	for _, location := range []string{"", "广东省", "invalid"} {
 		_, _, _, _, err := getWeatherByLocation(context.Background(), location, client)
 		if err == nil {
 			t.Errorf("location %q should fail", location)

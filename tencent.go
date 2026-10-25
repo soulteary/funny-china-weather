@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
-	"regexp"
 	"strconv"
 	"strings"
 )
@@ -36,31 +35,20 @@ func GetWeatherByLocation(location string) (code int, degree int, humidity int, 
 
 func getWeatherByLocation(ctx context.Context, location string, client httpDoer) (code int, degree int, humidity int, updateTime string, err error) {
 
-	province := ""
-	city := ""
-
-	if location == "北京市" || location == "上海市" || location == "重庆市" || location == "天津市" {
-		province = location
-		city = province
-	} else {
-		r, _ := regexp.Compile(`(\S+省)(\S+市)`)
-		matched := r.FindAllStringSubmatch(location, -1)
-
-		if len(matched) > 0 && len(matched[0]) == 3 {
-			province = url.QueryEscape(matched[0][1])
-			city = url.QueryEscape(matched[0][2])
-		} else {
-			return 0, 0, 0, "", errors.New("tencent: 地址位置参数内容有误")
-		}
+	parsed, parseErr := parseLocation(location)
+	if parseErr != nil {
+		return 0, 0, 0, "", fmt.Errorf("tencent: invalid location: %w", parseErr)
 	}
-
-	if province == "" || city == "" {
-		return 0, 0, 0, "", errors.New("tencent: 地址位置参数不能为空")
+	query := url.Values{
+		"source":       {"pc"},
+		"weather_type": {"observe"},
+		"province":     {parsed.province},
+		"city":         {parsed.city},
 	}
 
 	response := new(responseTencentWeather)
 
-	fetchErr := getJSONWithClient(ctx, client, "tencent", "https://wis.qq.com/weather/common?source=pc&weather_type=observe&province="+province+"&city="+city, response)
+	fetchErr := getJSONWithClient(ctx, client, "tencent", "https://wis.qq.com/weather/common?"+query.Encode(), response)
 	if fetchErr != nil {
 		return 0, 0, 0, "", fetchErr
 	}
