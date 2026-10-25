@@ -12,8 +12,8 @@ func TestGetIconSVGAllResources(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(entries) != 33 {
-		t.Fatalf("embedded %d icons, want 33", len(entries))
+	if len(entries) != 34 {
+		t.Fatalf("embedded %d icons, want 34", len(entries))
 	}
 	for _, entry := range entries {
 		entry := entry
@@ -63,7 +63,7 @@ func TestGetIconSVGAllResources(t *testing.T) {
 
 func TestGetIconSVGInvalidKeys(t *testing.T) {
 	for _, key := range []string{
-		"", "unknown", "README", "README.md", "Cloudy-day", "CLOUDY-DAY",
+		"", "missing", "README", "README.md", "Cloudy-day", "CLOUDY-DAY",
 		"cloudy-day.svg", "cloudy-day.SVG", " cloudy-day", "cloudy-day ",
 		"cloudy-day\n", ".", "..", "../day", "icons/day", "/day",
 		"./day", `icons\day`, `..\day`, "day\x00", "晴", "%64ay", "day?",

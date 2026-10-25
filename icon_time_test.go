@@ -14,7 +14,7 @@ func ExampleGetWeatherIconAt() {
 	at := time.Date(2026, time.October, 26, 8, 0, 0, 0, china)
 	key, name := weather.GetWeatherIconAt(3, at)
 	fmt.Println(key, name)
-	// Output: rainy-1 白天阵雨
+	// Output: showers-day 白天阵雨
 }
 
 func TestGetWeatherIconAtTimeZones(t *testing.T) {
@@ -25,8 +25,8 @@ func TestGetWeatherIconAtTimeZones(t *testing.T) {
 		at   time.Time
 		want string
 	}{
-		{"UTC night", instant, "night"},
-		{"China morning", instant.In(china), "day"},
+		{"UTC night", instant, "clear-night"},
+		{"China morning", instant.In(china), "clear-day"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			if key, _ := weather.GetWeatherIconAt(0, tc.at); key != tc.want {

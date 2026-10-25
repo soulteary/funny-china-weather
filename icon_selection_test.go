@@ -18,11 +18,11 @@ func TestIconByCodeAtDayNightPairs(t *testing.T) {
 		nightKey  string
 		nightName string
 	}{
-		{"sunny", 0, "day", "晴", "night", "晴"},
+		{"sunny", 0, "clear-day", "晴", "clear-night", "晴"},
 		{"cloudy", 1, "cloudy-day", "多云", "cloudy-night", "夜间多云"},
-		{"showers", 3, "rainy-1", "白天阵雨", "rainy-night-1", "夜间阵雨"},
+		{"showers", 3, "showers-day", "白天阵雨", "showers-night", "夜间阵雨"},
 		{"rain and snow", 6, "rain-snow-day", "雨夹雪", "rain-snow-night", "雨夹雪"},
-		{"snow showers", 13, "snowy-day", "阵雪", "snowy-night", "阵雪"},
+		{"snow showers", 13, "snow-showers-day", "阵雪", "snow-showers-night", "阵雪"},
 	}
 	boundaries := []struct {
 		name   string
@@ -107,14 +107,14 @@ func TestWeatherIconsHighlightDistinctConditions(t *testing.T) {
 		code     int
 		key      string
 	}{
-		{"thunderstorm includes rain", 4, "thunder-rain"},
-		{"thunderstorm with hail highlights hail", 5, "icon-hail"},
-		{"freezing rain uses frozen precipitation", 19, "icon-sleet"},
-		{"light to moderate rain avoids the heaviest rain icon", 21, "rainy-5"},
-		{"light to moderate snow avoids the heaviest snow icon", 26, "snowy-5"},
-		{"haze uses the available visibility icon", 53, "icon-fog"},
-		{"unspecified rain does not assume heavy intensity", 301, "rainy-4"},
-		{"unspecified snow does not assume heavy intensity", 302, "snowy-4"},
+		{"thunderstorm includes rain", 4, "thunderstorm"},
+		{"thunderstorm with hail highlights hail", 5, "thunderstorm-hail"},
+		{"freezing rain uses frozen precipitation", 19, "freezing-rain"},
+		{"light to moderate rain avoids the heaviest rain icon", 21, "rain-moderate"},
+		{"light to moderate snow avoids the heaviest snow icon", 26, "snow-moderate"},
+		{"haze uses the available visibility icon", 53, "fog"},
+		{"unspecified rain does not assume heavy intensity", 301, "rain-light"},
+		{"unspecified snow does not assume heavy intensity", 302, "snow-light"},
 	}
 	for _, test := range cases {
 		t.Run(test.scenario, func(t *testing.T) {
@@ -131,7 +131,7 @@ func TestWeatherIconsHighlightDistinctConditions(t *testing.T) {
 // The linked official legend does not list code 32, so its regression is separate.
 func TestDenseFogRetainsItsSpecificDescription(t *testing.T) {
 	key, name := GetWeatherIconAt(32, time.Date(2026, time.October, 26, 8, 0, 0, 0, time.UTC))
-	if key != "icon-fog" || name != "浓雾" {
+	if key != "fog" || name != "浓雾" {
 		t.Fatalf("dense fog = (%q, %q), want available fog artwork and the specific condition", key, name)
 	}
 }
@@ -157,7 +157,7 @@ func TestIconByCodeAtUsesSuppliedTimeZone(t *testing.T) {
 	china := utc.In(time.FixedZone("UTC+8", 8*60*60))
 	utcKey, _ := iconByCodeAt(3, utc)
 	chinaKey, _ := iconByCodeAt(3, china)
-	if utcKey != "rainy-night-1" || chinaKey != "rainy-1" {
+	if utcKey != "showers-night" || chinaKey != "showers-day" {
 		t.Fatalf("same instant should use supplied local hours: UTC %q, UTC+8 %q", utcKey, chinaKey)
 	}
 }
@@ -165,7 +165,7 @@ func TestIconByCodeAtUsesSuppliedTimeZone(t *testing.T) {
 func TestGetWeatherIconByCodeUnknown(t *testing.T) {
 	for _, code := range []int{-1, 123} {
 		key, name := GetWeatherIconByCode(code)
-		if key != "day" || name != "未知" {
+		if key != "unknown" || name != "未知" {
 			t.Errorf("GetWeatherIconByCode(%d) = (%q, %q), want unknown fallback", code, key, name)
 		}
 	}

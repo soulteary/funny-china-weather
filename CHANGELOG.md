@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- Rename weather resource keys to explicit condition/intensity/day-night names;
+  remove old-name lookup without aliases. See [the naming guide](docs/icon-names.md).
+- Return a dedicated `unknown` icon for unrecognized weather codes, including at
+  night, instead of sunny artwork. The embedded set now contains 34 SVG assets.
+- Keep public function signatures and selector-to-SVG use compatible with Flare;
+  literal old keys and persisted old-key caches must be migrated.
+
 ## v0.2.0
 
 See the [release notes](docs/releases/v0.2.0.md) for migration from v0.1.1.

@@ -21,7 +21,7 @@ func ExampleGetIconSVGWithPrefix() {
 }
 
 func ExampleGetStaticIconSVG() {
-	svg, ok := weather.GetStaticIconSVG("icon-fog")
+	svg, ok := weather.GetStaticIconSVG("fog")
 	fmt.Println(ok, strings.Contains(svg, "<animate"))
 	// Output: true false
 }

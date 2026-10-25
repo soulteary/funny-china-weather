@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>天气 SVG 资源预览</title>
+<style>
+:root{color-scheme:light;--paper:#f4f5f7;--card:#fff;--text:#20252c;--muted:#606a77;--line:#dce0e5;--stage:#eef2f6;--accent:#235a82;--size:144px}
+*{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--text);font:15px/1.6 system-ui,-apple-system,sans-serif}main{max-width:1500px;margin:auto;padding:40px 24px}h1{font-size:28px;line-height:1.3;margin:0 0 10px}h2{font-size:14px;margin:0;font-weight:650;overflow-wrap:anywhere}p{margin:8px 0}.intro{max-width:850px;color:var(--muted)}.stats{display:flex;gap:30px;margin:24px 0}.stats strong{font-size:24px;margin-right:8px}.stats span{color:var(--muted)}.controls{display:flex;flex-wrap:wrap;align-items:center;gap:12px;padding:18px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}input,select,button{font:inherit}input[type=search],select,button{border:1px solid var(--line);border-radius:6px;padding:8px 12px;background:var(--card);color:var(--text)}input[type=search]{min-width:240px;flex:1}button{cursor:pointer}button[aria-pressed=true]{border-color:var(--accent);color:var(--accent)}label{display:flex;gap:8px;align-items:center}#status{color:var(--muted);font-size:13px;min-height:22px;margin:10px 0 22px}.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:18px}.card{border:1px solid var(--line);background:var(--card);border-radius:10px;overflow:hidden}.stage{background:var(--stage);min-height:calc(var(--size) + 40px);display:flex;align-items:center;justify-content:center;padding:20px}.stage svg{display:block;width:var(--size);height:var(--size);max-width:100%}.stage-night{--stage:#172433}.details{padding:16px 18px}.badges{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}.badge{font-size:12px;padding:2px 7px;background:var(--paper);border-radius:4px;color:var(--muted)}.badge.auto{color:var(--accent)}.condition{min-height:48px}.codes{font-size:12px;color:var(--muted);overflow-wrap:anywhere}.still{display:none}.static-mode .animated{display:none}.static-mode .still{display:block}.paused .animated *{animation-play-state:paused!important}.card[hidden]{display:none}.note{margin-top:30px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:13px}a{color:var(--accent)}
+@media(max-width:600px){main{padding:24px 16px}.stats{gap:16px;flex-wrap:wrap}.controls{align-items:stretch}input[type=search]{min-width:100%}}
+</style>
+</head>
+<body>
+<main>
+<h1>天气 SVG 资源预览</h1>
+<p class="intro">当前开发版的完整资源清单。图标通过项目公开 API 生成并内联显示，与 Flare 的 SVG 输出方式一致。此页面可离线打开，不加载字体、脚本或其他外部资源。</p>
+<div class="stats"><div><strong>{{.Total}}</strong><span>全部资源</span></div><div><strong>{{.Automatic}}</strong><span>参与自动匹配</span></div><div><strong>{{.Manual}}</strong><span>仅供直接调用</span></div></div>
+<div class="controls" aria-label="预览控制">
+<input id="search" type="search" placeholder="搜索名称、天气或代码" aria-label="搜索资源">
+<select id="filter" aria-label="匹配状态"><option value="all">全部资源</option><option value="auto">自动匹配</option><option value="manual">仅供直接调用</option></select>
+<button id="background" type="button" aria-pressed="false">切换深色画布</button>
+<button id="pause" type="button" aria-pressed="false">暂停动画</button>
+<button id="static" type="button" aria-pressed="false">查看静态版本</button>
+<label>大小 <input id="size" type="range" min="80" max="240" value="144" step="8" aria-label="图标尺寸"><output id="size-value">144px</output></label>
+</div>
+<p id="status" role="status" aria-live="polite"></p>
+<div class="grid" id="gallery">
+{{range .Icons}}<article class="card" data-key="{{.Key}}" data-auto="{{.Automatic}}" data-search="{{.Key}} {{.Description}} {{.Codes}}">
+<div class="stage" role="img" aria-label="{{.Description}}"><div class="animated">{{.Animated}}</div><div class="still">{{.Static}}</div></div>
+<div class="details"><h2>{{.Key}}</h2><div class="badges"><span class="badge{{if .Automatic}} auto{{end}}">{{if .Automatic}}自动匹配{{else}}仅供直接调用{{end}}</span><span class="badge">{{.Period}}</span><span class="badge">{{.Animation}}</span></div><p class="condition">{{.Description}}</p><p class="codes">天气代码：{{.Codes}}</p></div>
+</article>{{end}}
+</div>
+<div class="note"><p>白天为 05:00（含）至 19:00（不含）。备用资源的数字只表示构图变体。雾与霾、不同强度降雨等可能共用图标，具体天气以文字为准。unknown 是未知代码的自动兜底。</p><p>“暂停动画”同时控制 CSS 动画与浏览器支持的 SVG SMIL 动画；“静态版本”展示 GetStaticIconSVG 的真实输出。系统启用减少动态效果时，默认暂停。查看动画需要点击“继续动画”。unknown 本身没有动画。</p><p>来源：当前工作区 icons/*.svg 与 GetWeatherIconAt 的昼夜映射。本页用于人工检查显示效果，不代表已经通过浏览器动画验证。</p></div>
+</main>
+<script>
+(() => {
+  const body=document.body, cards=[...document.querySelectorAll('.card')];
+  const search=document.getElementById('search'), filter=document.getElementById('filter');
+  const pauseButton=document.getElementById('pause'), staticButton=document.getElementById('static');
+  const status=document.getElementById('status');
+  let paused=window.matchMedia('(prefers-reduced-motion: reduce)').matches, still=false;
+  const supportsSMIL=[...document.querySelectorAll('.animated svg')].every(svg=>typeof svg.pauseAnimations==='function' && typeof svg.unpauseAnimations==='function');
+  function updateStatus(){
+    const count=cards.filter(c=>!c.hidden).length;
+    status.textContent=`显示 ${count} / ${cards.length} 个资源 · ${still?'静态版本':paused?'动画已暂停':'动画播放中'}${supportsSMIL?'':' · 此浏览器不支持完整的 SMIL 暂停控制'}`;
+  }
+  function updateFilter(){
+    const q=search.value.trim().toLowerCase();
+    for(const c of cards)c.hidden=!c.dataset.search.toLowerCase().includes(q)||(filter.value==='auto'&&c.dataset.auto!=='true')||(filter.value==='manual'&&c.dataset.auto!=='false');
+    updateStatus();
+  }
+  function updateMotion(){
+    const stopped=paused||still;
+    body.classList.toggle('paused',stopped);body.classList.toggle('static-mode',still);
+    for(const svg of document.querySelectorAll('.animated svg')){
+      if(stopped && typeof svg.pauseAnimations==='function')svg.pauseAnimations();
+      else if(!stopped && typeof svg.unpauseAnimations==='function')svg.unpauseAnimations();
+    }
+    pauseButton.textContent=paused?'继续动画':'暂停动画';pauseButton.setAttribute('aria-pressed',String(paused));pauseButton.disabled=still;
+    staticButton.textContent=still?'返回动画版本':'查看静态版本';staticButton.setAttribute('aria-pressed',String(still));updateStatus();
+  }
+  search.addEventListener('input',updateFilter);filter.addEventListener('change',updateFilter);
+  pauseButton.addEventListener('click',()=>{paused=!paused;updateMotion()});
+  staticButton.addEventListener('click',()=>{still=!still;updateMotion()});
+  document.getElementById('background').addEventListener('click',event=>{
+    const dark=body.classList.toggle('stage-night');event.currentTarget.setAttribute('aria-pressed',String(dark));event.currentTarget.textContent=dark?'切换浅色画布':'切换深色画布';
+  });
+  document.getElementById('size').addEventListener('input',event=>{const size=event.target.value+'px';document.documentElement.style.setProperty('--size',size);document.getElementById('size-value').textContent=size});
+  updateMotion();
+})();
+</script>
+</body>
+</html>

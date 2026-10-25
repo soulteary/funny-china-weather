@@ -169,26 +169,26 @@ func TestSVGCompositionAllAssets(t *testing.T) {
 }
 
 func TestGetIconSVGWithPrefix(t *testing.T) {
-	first, ok := GetIconSVGWithPrefix("icon-dust", "Card_A-1")
-	second, again := GetIconSVGWithPrefix("icon-dust", "Card_A-1")
+	first, ok := GetIconSVGWithPrefix("dust", "Card_A-1")
+	second, again := GetIconSVGWithPrefix("dust", "Card_A-1")
 	if !ok || !again || first != second {
 		t.Fatal("same key and prefix must produce stable markup")
 	}
 	for _, prefix := range []string{"", "1card", "-card", "_card", "has space", "a/b", "a.b", "a:root", `a"`, "a<", "a\\", "a\n", "晴", strings.Repeat("a", 65)} {
-		if svg, ok := GetIconSVGWithPrefix("day", prefix); ok || svg != "" {
+		if svg, ok := GetIconSVGWithPrefix("clear-day", prefix); ok || svg != "" {
 			t.Errorf("accepted invalid prefix %q", prefix)
 		}
 	}
-	if _, ok := GetIconSVGWithPrefix("day", strings.Repeat("a", 64)); !ok {
+	if _, ok := GetIconSVGWithPrefix("clear-day", strings.Repeat("a", 64)); !ok {
 		t.Fatal("rejected 64-character prefix")
 	}
 	for _, prefix := range []string{"Card", "Card-blur", "auto-1"} {
-		svg, ok := GetIconSVGWithPrefix("day", prefix)
+		svg, ok := GetIconSVGWithPrefix("clear-day", prefix)
 		if !ok {
 			t.Fatal("valid prefix rejected")
 		}
 		fixed := inspectSVG(t, svg)
-		dynamic, _ := GetIconSVG("day")
+		dynamic, _ := GetIconSVG("clear-day")
 		automatic := inspectSVG(t, dynamic)
 		for id := range fixed.ids {
 			if automatic.ids[id] {
@@ -204,8 +204,8 @@ func TestGetIconSVGWithPrefix(t *testing.T) {
 			t.Errorf("accepted invalid static key %q", key)
 		}
 	}
-	a, _ := GetIconSVGWithPrefix("day", "Card")
-	b, _ := GetIconSVGWithPrefix("day", "Card-blur")
+	a, _ := GetIconSVGWithPrefix("clear-day", "Card")
+	b, _ := GetIconSVGWithPrefix("clear-day", "Card-blur")
 	idsA, idsB := inspectSVG(t, a).ids, inspectSVG(t, b).ids
 	for id := range idsA {
 		if idsB[id] {
@@ -281,7 +281,7 @@ func TestGetIconSVGConcurrentInstances(t *testing.T) {
 		workers.Add(1)
 		go func() {
 			defer workers.Done()
-			svg, ok := GetIconSVG("icon-hail")
+			svg, ok := GetIconSVG("thunderstorm-hail")
 			if !ok {
 				results <- ""
 				return
@@ -323,14 +323,14 @@ func TestCSSAnimationReferencesResolve(t *testing.T) {
 func TestSVGInstancesAcrossProcesses(t *testing.T) {
 	const probe = "FCW_SVG_PROCESS_PREFIX_PROBE"
 	if os.Getenv(probe) == "1" {
-		svg, ok := GetIconSVG("icon-fog")
+		svg, ok := GetIconSVG("fog")
 		if !ok {
 			os.Exit(2)
 		}
 		fmt.Print(svg)
 		os.Exit(0)
 	}
-	first, ok := GetIconSVG("icon-fog")
+	first, ok := GetIconSVG("fog")
 	if !ok {
 		t.Fatal("icon unavailable")
 	}
