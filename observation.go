@@ -56,13 +56,11 @@ func ParseUpdateTime(raw string) (time.Time, error) {
 // Age returns the elapsed time since the parsed UpdateTime at the supplied
 // reference instant. Invalid timestamps and timestamps after at return an error
 // and a zero duration. The calculation compares instants, regardless of at's zone.
+// Intervals beyond time.Duration's range saturate at its largest positive value.
 func (observation Observation) Age(at time.Time) (time.Duration, error) {
-	updated, err := ParseUpdateTime(observation.UpdateTime)
+	updated, err := observation.updateTimeAt(at)
 	if err != nil {
 		return 0, err
-	}
-	if updated.After(at) {
-		return 0, &Error{Provider: "tencent", Stage: "freshness", Field: "update_time", Err: fmt.Errorf("update_time is after the reference time")}
 	}
 	return at.Sub(updated), nil
 }
@@ -74,9 +72,22 @@ func (observation Observation) IsStale(at time.Time, maxAge time.Duration) (bool
 	if maxAge <= 0 {
 		return false, &Error{Provider: "tencent", Stage: "input", Field: "max_age", Err: fmt.Errorf("max_age must be positive")}
 	}
-	age, err := observation.Age(at)
+	updated, err := observation.updateTimeAt(at)
 	if err != nil {
 		return false, err
 	}
-	return age > maxAge, nil
+	// Compare instants directly: Time.Sub saturates for intervals beyond the
+	// representable Duration range and would hide staleness at the maximum limit.
+	return updated.Before(at.Add(-maxAge)), nil
+}
+
+func (observation Observation) updateTimeAt(at time.Time) (time.Time, error) {
+	updated, err := ParseUpdateTime(observation.UpdateTime)
+	if err != nil {
+		return time.Time{}, err
+	}
+	if updated.After(at) {
+		return time.Time{}, &Error{Provider: "tencent", Stage: "freshness", Field: "update_time", Err: fmt.Errorf("update_time is after the reference time")}
+	}
+	return updated, nil
 }

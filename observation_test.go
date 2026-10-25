@@ -176,3 +176,17 @@ func TestGetObservationInFlightCancellation(t *testing.T) {
 		t.Fatal("request ignored cancellation")
 	}
 }
+
+func TestObservationIsStaleBeyondDurationRange(t *testing.T) {
+	observation := Observation{UpdateTime: "000101010000"}
+	at := time.Date(2026, time.October, 26, 0, 30, 0, 0, time.UTC)
+	maxAge := time.Duration(1<<63 - 1)
+	age, err := observation.Age(at)
+	if err != nil || age != maxAge {
+		t.Fatalf("Age() = %v, %v; want saturated duration %v", age, err, maxAge)
+	}
+	stale, err := observation.IsStale(at, maxAge)
+	if err != nil || !stale {
+		t.Fatalf("IsStale() = %v, %v; ancient observation must be older than maximum duration", stale, err)
+	}
+}
