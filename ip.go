@@ -1,6 +1,7 @@
 package weather
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -16,13 +17,17 @@ type responseIPIP struct {
 
 // GetMyIPLocation returns the province and city associated with the outgoing IP.
 func GetMyIPLocation() (string, error) {
-	return getMyIPLocation(newHTTPClient(3))
+	return getMyIPLocation(context.Background(), defaultHTTPClient)
 }
 
-func getMyIPLocation(client httpDoer) (string, error) {
+func getMyIPLocation(ctx context.Context, client httpDoer) (string, error) {
 	response := new(responseIPIP)
-	if err := getJSONWithClient(client, "https://myip.ipip.net/json", response); err != nil {
+	if err := getJSONWithClient(ctx, client, "ipip", "https://myip.ipip.net/json", response); err != nil {
 		return "", err
+	}
+
+	if response.Ret != "ok" {
+		return "", fmt.Errorf("ipip: unexpected ret %q", response.Ret)
 	}
 
 	location := response.Data.Location
@@ -36,12 +41,12 @@ func getMyIPLocation(client httpDoer) (string, error) {
 		}
 	}
 	if location[0] != "中国" {
-		return "", errors.New("非境内IP地址，放弃继续解析 :(")
+		return "", errors.New("ipip: 非境内IP地址，放弃继续解析 :(")
 	}
 
-	province, city := location[1], location[2]
-	if province == "北京" || province == "上海" || province == "重庆" || province == "天津" {
-		return province + "市", nil
+	parsed, err := normalizeLocationFields(location[1], location[2])
+	if err != nil {
+		return "", fmt.Errorf("ipip: invalid data.location: %w", err)
 	}
-	return province + "省" + city + "市", nil
+	return parsed.String(), nil
 }
