@@ -1,8 +1,16 @@
 # funny-china-weather
 
+[![Go Report Card](./.github/goreportcard.svg)](./.github/goreportcard-report.md) [![Coverage](./.github/coverage.svg)](./.github/go-test-report.md)
+
 A small Go library for current weather in China and animated SVG weather icons.
 It can locate the outgoing IP address, fetch Tencent observations for a province
 and city, and select an embedded icon by weather code.
+
+The icon examples below describe the current development version. Published
+`v0.2.0` uses the previous resource names; see the [icon naming and migration
+guide](docs/icon-names.md). After these changes are merged, install `@main` to
+try the renamed resources before the next release. Old resource names are not
+accepted by the development version.
 
 ## Requirements and installation
 
@@ -153,7 +161,7 @@ fmt.Println(description, len(svg))
 at **05:00 inclusive** and ends at **19:00 exclusive**. Sunny, cloudy, shower,
 rain-and-snow, and snow-shower codes have separate day and night icons. Other
 supported codes use the same icon throughout the day. Unknown codes, including
-`-1`, return the key `day` and the description `未知`.
+`-1`, return the key `unknown` and the description `未知`.
 
 Use `GetWeatherIconAt` when a stored timestamp or a particular time zone should
 determine the icon:
@@ -162,7 +170,7 @@ determine the icon:
 chinaTime := time.FixedZone("UTC+8", 8*60*60)
 at := time.Date(2026, time.October, 25, 19, 0, 0, 0, chinaTime)
 key, description := weather.GetWeatherIconAt(3, at)
-// key is "rainy-night-1"; description is "夜间阵雨".
+// key is "showers-night"; description is "夜间阵雨".
 ```
 
 Add `import "time"` for this example. `GetWeatherIconAt` uses the hour in the
@@ -171,7 +179,7 @@ upstream update string does not determine icon selection automatically.
 
 `GetIconSVG` returns a complete SVG string for an exact icon key, such as
 `cloudy-day`. It returns `"", false` for unknown keys, paths, or filenames with
-an extension such as `cloudy-day.svg`. All 33 source SVG assets are embedded in
+an extension such as `cloudy-day.svg`. All 34 source SVG assets are embedded in
 the library; no asset-generation step or external icon files are needed.
 
 Every SVG returned by `GetIconSVG` receives a unique instance prefix for its
@@ -179,6 +187,12 @@ IDs, references, classes, and animations. Different icons and repeated copies
 can be inserted inline into the same HTML document. The source assets have
 valid `viewBox` attributes, so changing the root width and height scales their
 content. Output bytes can differ between calls.
+
+For visual inspection, open the offline [complete SVG gallery](docs/icon-preview.html).
+It labels every resource's name, weather conditions and automatic matching
+status, with light/dark canvases and animation/static controls. Regenerate it
+with `go run ./examples/icon-preview` after resource changes; see the
+[gallery instructions](examples/icon-preview/README.md).
 
 Use `GetIconSVGWithPrefix(key, prefix)` for stable output, for example when
 caching or rendering on a server. Prefixes must begin with an ASCII letter,
@@ -269,6 +283,21 @@ go test ./...
 go test -race ./...
 go vet ./...
 ```
+
+CI uses [Go Test Report Action](https://github.com/soulteary/go-test-report-action)
+to run tests with the race detector and atomic coverage, and
+[Go Report Card Action](https://github.com/soulteary/goreportcard-action) to
+generate the quality report. The README badges link to their generated reports,
+following [grantseal](https://github.com/soulteary/grantseal). The test report
+covers `./...`, including the Flare and SVG gallery examples; live provider
+tests remain opt-in. No coverage or grade threshold is imposed by these reports.
+
+Reports and raw test results are available as workflow artifacts, including on
+pull requests. After tests and cross-builds pass on the default branch, a
+separate job commits the five stable report/badge files only if the branch still
+matches the tested commit. PRs and tag runs never write reports back. The first
+successful default-branch run creates the badge files; report publication needs
+the repository to allow the workflow's `contents: write` permission.
 
 After modules are available locally, `GOPROXY=off go test ./...` checks that the
 test suite runs without downloading dependencies. Examples that access the

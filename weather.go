@@ -11,7 +11,7 @@
 //
 // GetWeatherIconByCode uses the current local time. GetWeatherIconAt uses the
 // time zone of the supplied time.Time. Daytime is 05:00 inclusive to 19:00
-// exclusive. Unknown codes, including -1, use the day icon and the name 未知.
+// exclusive. Unknown codes, including -1, use the unknown icon and the name 未知.
 // GetIconSVG retrieves an embedded asset by its exact icon key and isolates each
 // instance for inline composition. GetIconSVGWithPrefix provides stable output,
 // and GetStaticIconSVG disables animation. These functions work offline.

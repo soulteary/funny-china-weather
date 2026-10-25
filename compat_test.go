@@ -12,7 +12,7 @@ import (
 func TestPublishedSVGAPI(t *testing.T) {
 	tmpl := template.Must(template.New("icon").Parse(`<div>{{.}}</div>`))
 	var rendered bytes.Buffer
-	if err := tmpl.Execute(&rendered, weather.GetSVGCodeByName("day")); err != nil {
+	if err := tmpl.Execute(&rendered, weather.GetSVGCodeByName("clear-day")); err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(rendered.String(), "<svg") || strings.Contains(rendered.String(), "&lt;svg") {

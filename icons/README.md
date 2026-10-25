@@ -1,5 +1,10 @@
 # ICONS
 
+For canonical resource keys, weather-code mappings and migration from v0.2.0,
+see [the naming guide](../docs/icon-names.md). `unknown.svg` is original artwork
+provided under the project BSD license; the existing 33 resources retain the
+upstream notices below.
+
 Icon resources selected and modified from the following projects.
 
 - https://github.com/bramkragten/weather-card

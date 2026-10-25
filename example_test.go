@@ -30,5 +30,5 @@ func ExampleGetWeatherByLocation() {
 func ExampleGetWeatherIconByCode() {
 	key, name := weather.GetWeatherIconByCode(-1)
 	fmt.Println(key, name)
-	// Output: day 未知
+	// Output: unknown 未知
 }
