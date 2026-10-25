@@ -8,12 +8,10 @@ and city, and select an embedded icon by weather code.
 
 Go 1.27.3 or later is required. Development and CI use Go 1.27.3.
 
-The improvements documented here are on the current development branch. Until
-the next release is tagged, install the current main branch after this change
-has merged:
+Install v0.2.0 after its version tag has been published:
 
 ```sh
-go get github.com/soulteary/funny-china-weather@main
+go get github.com/soulteary/funny-china-weather@v0.2.0
 ```
 
 Import the module with the package name `weather`:
@@ -22,9 +20,12 @@ Import the module with the package name `weather`:
 import weather "github.com/soulteary/funny-china-weather"
 ```
 
-The older `v0.1.1` tag does not include these APIs and fixes; plain `go get` can
-still select that tag. See [release steps](docs/releasing.md) for publishing and
-verifying the next version through the Go module proxy.
+During release preparation, `@main` selects the current development code.
+Merging changes does not publish a version: plain `go get` selects the latest
+published tag. See the [v0.2.0 release checklist](docs/releases/v0.2.0-checklist.md)
+for publication gates, the [release notes](docs/releases/v0.2.0.md) for migration
+from v0.1.1, and [release steps](docs/releasing.md) for publishing and verifying
+the version through the Go module proxy.
 
 The library includes its SVG assets and has no runtime dependencies outside the
 Go standard library. Location and observation requests require network access;
@@ -82,8 +83,9 @@ fmt.Println("stale:", stale)
 
 Add `context` and `time` imports. `ParseUpdateTime` explicitly parses a strict
 12-digit `YYYYMMDDHHMM` timestamp in UTC+8. `Observation.Age(at)` returns its age;
-`IsStale(at, maxAge)` compares it with a caller-chosen positive limit. A malformed
-or future timestamp returns an error from these helpers, while fetching an
+`IsStale(at, maxAge)` compares it with a caller-chosen positive limit. Parsing
+rejects malformed timestamps and invalid calendar dates; `Age` and `IsStale`
+also reject timestamps after the supplied reference time. Fetching an
 observation still preserves any nonblank upstream timestamp. Age equal to the
 limit is not stale. The library does not impose a default freshness policy.
 
@@ -186,6 +188,13 @@ return `"", false`. `GetStaticIconSVG(key)` provides an instance-isolated SVG
 with SMIL and CSS animation disabled for applications that prefer reduced
 motion. Applications should choose the static variant based on their own
 accessibility preferences.
+
+When caching inline SVGs, include both the icon key and a unique DOM-slot prefix
+in the cache key. Copying one final SVG string into several positions duplicates
+its IDs, even when that string originally came from `GetIconSVG`. Generate each
+instance separately or use `GetIconSVGWithPrefix` with distinct slot prefixes.
+Avoid depending on the bundled assets' internal IDs or CSS class names. A fixed
+prefix makes output stable; it does not cache the parsing work automatically.
 
 Weather descriptions follow the [China Weather legend](https://www.weather.com.cn/pub/legend.shtml),
 including thunderstorm with hail, freezing rain, intensity ranges, and extended
