@@ -6,10 +6,14 @@ and city, and select an embedded icon by weather code.
 
 ## Requirements and installation
 
-Go 1.19 or later is required.
+Go 1.27.3 or later is required. Development and CI use Go 1.27.3.
+
+The improvements documented here are on the current development branch. Until
+the next release is tagged, install the current main branch after this change
+has merged:
 
 ```sh
-go get github.com/soulteary/funny-china-weather
+go get github.com/soulteary/funny-china-weather@main
 ```
 
 Import the module with the package name `weather`:
@@ -17,6 +21,10 @@ Import the module with the package name `weather`:
 ```go
 import weather "github.com/soulteary/funny-china-weather"
 ```
+
+The older `v0.1.1` tag does not include these APIs and fixes; plain `go get` can
+still select that tag. See [release steps](docs/releasing.md) for publishing and
+verifying the next version through the Go module proxy.
 
 The library includes its SVG assets and has no runtime dependencies outside the
 Go standard library. Location and observation requests require network access;
@@ -49,8 +57,35 @@ func main() {
 Celsius, relative humidity as an integer percentage, and the original
 `update_time` string. The provider currently supplies a timestamp such as
 `202610250745` (`YYYYMMDDHHMM`). The library preserves it exactly and does not
-parse it or convert its time zone. Unknown integer weather codes remain valid
-observation data.
+parse it or convert its time zone automatically. Unknown integer weather codes
+remain valid observation data.
+
+For cancellation and the provider's original descriptions, use the structured
+API:
+
+```go
+ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+defer cancel()
+observation, err := weather.GetObservation(ctx, "广西南宁市")
+if err != nil {
+    return err
+}
+fmt.Println(observation.Code, observation.TemperatureC,
+    observation.HumidityPercent, observation.Description,
+    observation.ShortDescription, observation.UpdateTime)
+stale, err := observation.IsStale(time.Now(), 30*time.Minute)
+if err != nil {
+    return err
+}
+fmt.Println("stale:", stale)
+```
+
+Add `context` and `time` imports. `ParseUpdateTime` explicitly parses a strict
+12-digit `YYYYMMDDHHMM` timestamp in UTC+8. `Observation.Age(at)` returns its age;
+`IsStale(at, maxAge)` compares it with a caller-chosen positive limit. A malformed
+or future timestamp returns an error from these helpers, while fetching an
+observation still preserves any nonblank upstream timestamp. Age equal to the
+limit is not stale. The library does not impose a default freshness policy.
 
 The supported address forms include province-and-city names such as
 `浙江省杭州市`, the four municipalities (`北京市`, `上海市`, `天津市`, and
@@ -74,6 +109,13 @@ District-only addresses, coordinates, and foreign locations are outside this
 API's scope. Local address validation does not establish whether Tencent has
 observations for every city.
 
+Repeated administrative levels, mismatched municipality names, invalid UTF-8,
+and invisible format characters are rejected. Legitimate names such as
+`湖南省津市市` remain valid. The IP location normalizer explicitly recognizes
+short forms for `黑龙江省大兴安岭地区`, `内蒙古自治区阿拉善盟`, and
+`内蒙古自治区锡林郭勒盟`.
+This is a small set of aliases, not a complete administrative-division database.
+
 ## Locate the outgoing IP address
 
 ```go
@@ -89,6 +131,10 @@ connection, including any proxy or VPN, rather than a device's GPS position.
 The returned Chinese location uses normalized administrative names so it can be
 passed directly to `GetWeatherByLocation`. Missing country, province, or city
 information and locations outside China return an error.
+
+`GetMyIPLocationContext(ctx)` and `GetWeatherByLocationContext(ctx, location)`
+accept caller cancellation while returning the same values as their original
+counterparts.
 
 ## Select an icon and read its SVG
 
@@ -126,12 +172,34 @@ upstream update string does not determine icon selection automatically.
 an extension such as `cloudy-day.svg`. All 33 source SVG assets are embedded in
 the library; no asset-generation step or external icon files are needed.
 
+Every SVG returned by `GetIconSVG` receives a unique instance prefix for its
+IDs, references, classes, and animations. Different icons and repeated copies
+can be inserted inline into the same HTML document. The source assets have
+valid `viewBox` attributes, so changing the root width and height scales their
+content. Output bytes can differ between calls.
+
+Use `GetIconSVGWithPrefix(key, prefix)` for stable output, for example when
+caching or rendering on a server. Prefixes must begin with an ASCII letter,
+contain only ASCII letters, digits, `_`, or `-`, and be at most 64 characters.
+Use a unique prefix for every inline instance in a document. Invalid prefixes
+return `"", false`. `GetStaticIconSVG(key)` provides an instance-isolated SVG
+with SMIL and CSS animation disabled for applications that prefer reduced
+motion. Applications should choose the static variant based on their own
+accessibility preferences.
+
+Weather descriptions follow the [China Weather legend](https://www.weather.com.cn/pub/legend.shtml),
+including thunderstorm with hail, freezing rain, intensity ranges, and extended
+codes `53` (haze), `301` (rain), and `302` (snow). An icon can approximate a
+condition when the bundled set lacks an exact visual; the description retains
+the condition's meaning.
+
 The original public functions retain their signatures:
 
 ```go
 func GetMyIPLocation() (string, error)
 func GetWeatherByLocation(location string) (code int, degree int, humidity int, updateTime string, err error)
 func GetWeatherIconByCode(weatherCode int) (string, string)
+func GetSVGCodeByName(name string) template.HTML
 ```
 
 The additional functions are:
@@ -139,7 +207,19 @@ The additional functions are:
 ```go
 func GetWeatherIconAt(code int, at time.Time) (key, name string)
 func GetIconSVG(key string) (svg string, ok bool)
+func GetIconSVGWithPrefix(key, prefix string) (svg string, ok bool)
+func GetStaticIconSVG(key string) (svg string, ok bool)
+func GetMyIPLocationContext(ctx context.Context) (string, error)
+func GetWeatherByLocationContext(ctx context.Context, location string) (int, int, int, string, error)
+func GetObservation(ctx context.Context, location string) (Observation, error)
+func ParseUpdateTime(raw string) (time.Time, error)
 ```
+
+`GetSVGCodeByName` is retained for callers of the published `v0.1.1` API and is
+deprecated in favor of `GetIconSVG`. It returns only trusted bundled markup as
+`html/template.HTML`, and returns an empty value for unknown names. Existing
+function signatures are preserved; corrected weather descriptions and the
+Go 1.27.3 minimum are intentional changes. See [the changelog](CHANGELOG.md).
 
 ## Network behavior and errors
 
@@ -162,8 +242,13 @@ malformed required field returns an error instead of partial weather data.
 
 Errors identify the provider and failed request, response, or field. Underlying
 request, read, JSON, and numeric conversion errors remain available through
-`errors.Is` and `errors.As` where applicable. The package currently exposes no
-custom client, context, or retry configuration. Callers should handle errors
+`errors.Is` and `errors.As` where applicable. Use `errors.As(err, &providerError)`
+with a `*weather.Error` to inspect `Provider`, `Stage`, `HTTPStatus`,
+`BusinessCode`, and `Field`; HTTP 429 and provider business failures can be
+handled separately. `errors.Is(err, context.Canceled)` and
+`errors.Is(err, context.DeadlineExceeded)` preserve cancellation causes.
+`ErrResponseTooLarge` identifies the response-size limit. The package exposes
+no custom client or automatic retry configuration. Callers should handle errors
 before using returned values.
 
 ## Development and validation
@@ -187,7 +272,7 @@ Live API tests are opt-in and can fail because of provider or network conditions
 go test -tags integration -run 'Integration$' -count=1 .
 ```
 
-The GitHub Actions workflow tests Go 1.19.13 and Go 1.27.3 on Linux, checks the
+The GitHub Actions workflow uses Go 1.27.3 from `go.mod` on Linux, checks the
 race detector and `go vet`, and cross-compiles the library for Windows and macOS.
 A manual workflow run can also enable the live integration checks. Regular
 pushes and pull requests run the offline suite only.

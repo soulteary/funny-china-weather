@@ -1,6 +1,10 @@
 package weather
 
 import (
+	"encoding/json"
+	"os"
+	"strconv"
+	"strings"
 	"testing"
 	"time"
 )
@@ -18,7 +22,7 @@ func TestIconByCodeAtDayNightPairs(t *testing.T) {
 		{"cloudy", 1, "cloudy-day", "多云", "cloudy-night", "夜间多云"},
 		{"showers", 3, "rainy-1", "白天阵雨", "rainy-night-1", "夜间阵雨"},
 		{"rain and snow", 6, "rain-snow-day", "雨夹雪", "rain-snow-night", "雨夹雪"},
-		{"snow showers", 13, "snowy-day", "雪天", "snowy-night", "雪天"},
+		{"snow showers", 13, "snowy-day", "阵雪", "snowy-night", "阵雪"},
 	}
 	boundaries := []struct {
 		name   string
@@ -54,37 +58,95 @@ func TestIconByCodeAtDayNightPairs(t *testing.T) {
 	}
 }
 
-func TestIconByCodeAtTimeIndependentCodes(t *testing.T) {
-	tests := []struct {
-		codes []int
-		key   string
-		name  string
-	}{
-		{[]int{2}, "cloudy", "阴天"},
-		{[]int{4}, "thunder", "打雷"},
-		{[]int{5}, "thunder-rain", "雷雨天"},
-		{[]int{7}, "rainy-4", "小雨"},
-		{[]int{8}, "rainy-5", "中雨"},
-		{[]int{9}, "rainy-6", "大雨"},
-		{[]int{10, 11, 12}, "rainy-6", "雨"},
-		{[]int{14}, "snowy-4", "小雪"},
-		{[]int{15}, "snowy-5", "中雪"},
-		{[]int{16}, "snowy-6", "大雪"},
-		{[]int{17}, "snowy-6", "暴雪"},
-		{[]int{18, 32}, "icon-fog", "有雾"},
-		{[]int{19, 21, 22, 23, 24, 25}, "rainy-6", "中雨"},
-		{[]int{20, 29, 30, 31}, "icon-dust", "沙尘暴"},
-		{[]int{26, 27, 28}, "snowy-6", "中雪"},
-		{[]int{-999, -1, 33, 123}, "day", "未知"},
+// This fixture records labels and image filenames from the official legend,
+// independently of the implementation's icon and description table.
+func TestWeatherDescriptionsMatchOfficialLegend(t *testing.T) {
+	body, err := os.ReadFile("testdata/weather_legend.json")
+	if err != nil {
+		t.Fatal(err)
 	}
-	for _, test := range tests {
-		for _, code := range test.codes {
-			for _, hour := range []int{0, 12, 23} {
-				at := time.Date(2026, time.October, 25, hour, 0, 0, 0, time.UTC)
-				key, name := iconByCodeAt(code, at)
-				if key != test.key || name != test.name {
-					t.Errorf("iconByCodeAt(%d, hour %d) = (%q, %q), want (%q, %q)", code, hour, key, name, test.key, test.name)
+	var legend struct {
+		Source     string `json:"source"`
+		Conditions []struct {
+			Image       string `json:"image"`
+			Description string `json:"description"`
+		} `json:"conditions"`
+	}
+	if err := json.Unmarshal(body, &legend); err != nil {
+		t.Fatal(err)
+	}
+	if legend.Source != "https://www.weather.com.cn/pub/legend.shtml" || len(legend.Conditions) == 0 {
+		t.Fatal("official legend fixture is missing its source or entries")
+	}
+	for _, condition := range legend.Conditions {
+		t.Run(condition.Image, func(t *testing.T) {
+			if !strings.HasPrefix(condition.Image, "d") || !strings.HasSuffix(condition.Image, ".png") {
+				t.Fatalf("unexpected official image filename %q", condition.Image)
+			}
+			code, err := strconv.Atoi(strings.TrimSuffix(strings.TrimPrefix(condition.Image, "d"), ".png"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, hour := range []int{8, 23} {
+				at := time.Date(2026, time.October, 26, hour, 0, 0, 0, time.UTC)
+				key, name := GetWeatherIconAt(code, at)
+				if name != condition.Description {
+					t.Errorf("code %d at hour %d describes %q, official legend describes %q", code, hour, name, condition.Description)
 				}
+				if svg, ok := GetIconSVG(key); !ok || svg == "" {
+					t.Errorf("official condition %q has no SVG for key %q", condition.Description, key)
+				}
+			}
+		})
+	}
+}
+
+func TestWeatherIconsHighlightDistinctConditions(t *testing.T) {
+	cases := []struct {
+		scenario string
+		code     int
+		key      string
+	}{
+		{"thunderstorm includes rain", 4, "thunder-rain"},
+		{"thunderstorm with hail highlights hail", 5, "icon-hail"},
+		{"freezing rain uses frozen precipitation", 19, "icon-sleet"},
+		{"light to moderate rain avoids the heaviest rain icon", 21, "rainy-5"},
+		{"light to moderate snow avoids the heaviest snow icon", 26, "snowy-5"},
+		{"haze uses the available visibility icon", 53, "icon-fog"},
+		{"unspecified rain does not assume heavy intensity", 301, "rainy-4"},
+		{"unspecified snow does not assume heavy intensity", 302, "snowy-4"},
+	}
+	for _, test := range cases {
+		t.Run(test.scenario, func(t *testing.T) {
+			for _, hour := range []int{8, 23} {
+				key, _ := GetWeatherIconAt(test.code, time.Date(2026, time.October, 26, hour, 0, 0, 0, time.UTC))
+				if key != test.key {
+					t.Errorf("code %d at hour %d uses %q, want %q", test.code, hour, key, test.key)
+				}
+			}
+		})
+	}
+}
+
+// The linked official legend does not list code 32, so its regression is separate.
+func TestDenseFogRetainsItsSpecificDescription(t *testing.T) {
+	key, name := GetWeatherIconAt(32, time.Date(2026, time.October, 26, 8, 0, 0, 0, time.UTC))
+	if key != "icon-fog" || name != "浓雾" {
+		t.Fatalf("dense fog = (%q, %q), want available fog artwork and the specific condition", key, name)
+	}
+}
+
+func TestIconByCodeAtTimeIndependentCodes(t *testing.T) {
+	codes := []int{2, 4, 5, 7, 8, 9, 10, 11, 12, 14, 15, 16, 17, 18, 19,
+		20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 53, 301, 302,
+		-999, -1, 33, 123}
+	for _, code := range codes {
+		at := time.Date(2026, time.October, 26, 0, 0, 0, 0, time.UTC)
+		wantKey, wantName := GetWeatherIconAt(code, at)
+		for _, hour := range []int{8, 12, 23} {
+			key, name := GetWeatherIconAt(code, at.Add(time.Duration(hour)*time.Hour))
+			if key != wantKey || name != wantName {
+				t.Errorf("time-independent code %d changed at hour %d: (%q, %q) => (%q, %q)", code, hour, wantKey, wantName, key, name)
 			}
 		}
 	}

@@ -1,0 +1,91 @@
+{
+  "source": "https://www.weather.com.cn/pub/legend.shtml",
+  "verified_on": "2026-10-26",
+  "notes": "Codes are read from official image filenames, not inferred from item order. Legend entries do not establish Tencent observe coverage.",
+  "conditions": [
+    {
+      "image": "d04.png",
+      "description": "雷阵雨"
+    },
+    {
+      "image": "d05.png",
+      "description": "雷阵雨伴有冰雹"
+    },
+    {
+      "image": "d10.png",
+      "description": "暴雨"
+    },
+    {
+      "image": "d11.png",
+      "description": "大暴雨"
+    },
+    {
+      "image": "d12.png",
+      "description": "特大暴雨"
+    },
+    {
+      "image": "d13.png",
+      "description": "阵雪"
+    },
+    {
+      "image": "d19.png",
+      "description": "冻雨"
+    },
+    {
+      "image": "d21.png",
+      "description": "小到中雨"
+    },
+    {
+      "image": "d22.png",
+      "description": "中到大雨"
+    },
+    {
+      "image": "d23.png",
+      "description": "大到暴雨"
+    },
+    {
+      "image": "d24.png",
+      "description": "暴雨到大暴雨"
+    },
+    {
+      "image": "d25.png",
+      "description": "大暴雨到特大暴雨"
+    },
+    {
+      "image": "d26.png",
+      "description": "小到中雪"
+    },
+    {
+      "image": "d27.png",
+      "description": "中到大雪"
+    },
+    {
+      "image": "d28.png",
+      "description": "大到暴雪"
+    },
+    {
+      "image": "d29.png",
+      "description": "浮尘"
+    },
+    {
+      "image": "d30.png",
+      "description": "扬沙"
+    },
+    {
+      "image": "d31.png",
+      "description": "强沙尘暴"
+    },
+    {
+      "image": "d53.png",
+      "description": "霾"
+    },
+    {
+      "image": "d301.png",
+      "description": "雨"
+    },
+    {
+      "image": "d302.png",
+      "description": "雪"
+    }
+  ]
+}

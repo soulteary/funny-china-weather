@@ -20,17 +20,13 @@ concurrency:
 
 jobs:
   test:
-    name: Go ${{ matrix.go }} offline tests
+    name: Go 1.27.3 offline tests
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        go: ["1.19.13", "1.27.3"]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: ${{ matrix.go }}
+          go-version-file: go.mod
           cache: false
       - name: Unit tests and examples
         run: go test ./...
@@ -58,7 +54,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: "1.27.3"
+          go-version-file: go.mod
           cache: false
       - name: Cross-compile library
         env:
@@ -75,7 +71,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: "1.27.3"
+          go-version-file: go.mod
           cache: false
       - name: Run live provider checks
         run: go test -tags integration -run 'Integration$' -count=1 .
