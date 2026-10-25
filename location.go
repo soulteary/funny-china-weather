@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 	"unicode"
+	"unicode/utf8"
 )
 
 type administrativeLocation struct {
@@ -29,6 +30,27 @@ var ordinaryProvinces = []string{
 	"山东省", "山西省", "陕西省", "四川省", "云南省", "浙江省", "台湾省",
 }
 
+// These explicit aliases preserve the names of known administrative areas.
+// This is a small exception list, not a registry of every Chinese location.
+var knownCityAliases = []struct{ province, shortName, fullName string }{
+	{"黑龙江省", "大兴安岭", "大兴安岭地区"},
+	{"内蒙古自治区", "阿拉善", "阿拉善盟"},
+	{"内蒙古自治区", "锡林郭勒", "锡林郭勒盟"},
+	{"湖南省", "津市", "津市市"},
+}
+
+func canonicalKnownCity(province, city string) (string, error) {
+	for _, alias := range knownCityAliases {
+		if city == alias.shortName || city == alias.fullName {
+			if province != alias.province {
+				return "", fmt.Errorf("city %q does not match province %q", city, province)
+			}
+			return alias.fullName, nil
+		}
+	}
+	return city, nil
+}
+
 func canonicalProvince(value string) (string, bool) {
 	value = strings.TrimSpace(value)
 	if province, ok := provinceAliases[value]; ok {
@@ -47,11 +69,11 @@ func isMunicipality(province string) bool {
 }
 
 func validLocationPart(value string) bool {
-	if value == "" || strings.ContainsAny(value, "/\\?&#=%") {
+	if value == "" || !utf8.ValidString(value) || strings.ContainsAny(value, "/\\?&#=%") {
 		return false
 	}
 	for _, char := range value {
-		if unicode.IsSpace(char) || unicode.IsControl(char) {
+		if unicode.IsSpace(char) || unicode.IsControl(char) || unicode.Is(unicode.Cf, char) {
 			return false
 		}
 	}
@@ -70,6 +92,14 @@ func hasCitySuffix(city string) bool {
 func validCityName(city string, allowShort bool) bool {
 	if !validLocationPart(city) {
 		return false
+	}
+	switch city {
+	case "省", "市", "区", "县", "旗", "州", "自治区", "自治州", "地区", "盟", "自治县", "自治旗", "特别行政区":
+		return false
+	}
+	// In this real Hunan city, the first 市 belongs to the place name.
+	if city == "津市市" {
+		return true
 	}
 	stem := city
 	for _, suffix := range []string{"自治州", "地区", "市", "盟"} {
@@ -95,15 +125,27 @@ func normalizeLocationFields(province, city string) (administrativeLocation, err
 	if !validCityName(city, true) {
 		return administrativeLocation{}, fmt.Errorf("invalid city %q", city)
 	}
+	municipality, cityIsProvince := canonicalProvince(city)
 	if isMunicipality(normalized) {
-		municipality, ok := canonicalProvince(city)
-		if !ok || municipality != normalized {
+		if !cityIsProvince || municipality != normalized {
 			return administrativeLocation{}, fmt.Errorf("city %q does not match municipality %q", city, normalized)
 		}
 		return administrativeLocation{normalized, normalized}, nil
 	}
+	if cityIsProvince && isMunicipality(municipality) {
+		return administrativeLocation{}, fmt.Errorf("municipality %q does not belong to province %q", city, normalized)
+	}
+	city, err := canonicalKnownCity(normalized, city)
+	if err != nil {
+		return administrativeLocation{}, err
+	}
 	if !hasCitySuffix(city) {
 		city += "市"
+		// Adding a suffix can expose a known alias, such as 津市.
+		city, err = canonicalKnownCity(normalized, city)
+		if err != nil {
+			return administrativeLocation{}, err
+		}
 	}
 	return administrativeLocation{normalized, city}, nil
 }
@@ -134,11 +176,14 @@ func parseLocation(value string) (administrativeLocation, error) {
 	if prefix == "" || isMunicipality(province) {
 		return administrativeLocation{}, fmt.Errorf("location must contain a supported province and city: %q", value)
 	}
-	city := strings.TrimPrefix(value, prefix)
+	city, err := canonicalKnownCity(province, strings.TrimPrefix(value, prefix))
+	if err != nil {
+		return administrativeLocation{}, err
+	}
 	if !hasCitySuffix(city) || !validCityName(city, false) {
 		return administrativeLocation{}, fmt.Errorf("location must end in a city, prefecture, or league name: %q", value)
 	}
-	return administrativeLocation{province, city}, nil
+	return normalizeLocationFields(province, city)
 }
 
 func (location administrativeLocation) String() string {
