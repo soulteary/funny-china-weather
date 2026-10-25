@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased
+## v0.2.0
+
+See the [release notes](docs/releases/v0.2.0.md) for migration from v0.1.1.
 
 - Require Go 1.27.3 and use that version throughout local configuration and CI.
 - Restore `GetSVGCodeByName(string) template.HTML` from the published v0.1.1
@@ -17,7 +19,20 @@
   provider's descriptions. Add explicit UTC+8 timestamp and freshness helpers.
 - Add structured provider errors while preserving wrapped cancellation and
   parsing causes, plus an exported response-size error.
+- Return Tencent's actual `update_time` through the existing tuple API instead
+  of the empty string returned by v0.1.1.
+- Reject unsuccessful HTTP/business responses, incomplete observations, invalid
+  numeric fields, and humidity outside 0–100. Bound JSON responses to 1 MiB and
+  retain the three-second request timeout.
+- Make icon selection deterministic, define daytime as 05:00 inclusive to
+  19:00 exclusive, and use `day` / `未知` for unknown codes, including `-1`.
+- Embed all 33 SVG resources with the standard library and remove the old
+  minifier/parser module dependencies.
 
 Existing request functions keep their signatures and preserve raw timestamps.
 Corrected condition descriptions may change display strings. Code that relied
 on raw SVG bytes should use `GetIconSVGWithPrefix` with its own unique prefix.
+The minimum Go version rises from v0.1.1's Go 1.17 to Go 1.27.3. Responses that
+v0.1.1 accepted as partial or zero-valued success can now return errors; handle
+errors before using weather data and use `errors.Is` / `errors.As` rather than
+matching exact error text.
