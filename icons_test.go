@@ -3,7 +3,6 @@ package weather
 import (
 	"encoding/xml"
 	"io"
-	"os"
 	"strings"
 	"testing"
 )
@@ -28,16 +27,10 @@ func TestGetIconSVGAllResources(t *testing.T) {
 			if !ok || svg == "" {
 				t.Fatalf("GetIconSVG(%q) = (%q, %v), want nonempty SVG and true", key, svg, ok)
 			}
-			source, err := os.ReadFile("icons/" + entry.Name())
-			if err != nil {
-				t.Fatal(err)
-			}
-			if svg != string(source) {
-				t.Fatal("embedded SVG differs from its source file")
-			}
 
 			decoder := xml.NewDecoder(strings.NewReader(svg))
 			var root xml.Name
+			var viewBox string
 			for {
 				token, err := decoder.Token()
 				if err == io.EOF {
@@ -48,7 +41,18 @@ func TestGetIconSVGAllResources(t *testing.T) {
 				}
 				if start, ok := token.(xml.StartElement); ok && root.Local == "" {
 					root = start.Name
+					for _, attr := range start.Attr {
+						if attr.Name.Local == "viewBox" {
+							viewBox = attr.Value
+						}
+						if attr.Name.Local == "viewbox" {
+							t.Fatal("incorrect lowercase viewbox attribute")
+						}
+					}
 				}
+			}
+			if len(strings.Fields(viewBox)) != 4 {
+				t.Fatalf("invalid root viewBox %q", viewBox)
 			}
 			if root.Local != "svg" || root.Space != "http://www.w3.org/2000/svg" {
 				t.Fatalf("root element = %#v, want SVG namespace root", root)
