@@ -28,6 +28,8 @@ See the [release notes](docs/releases/v0.2.0.md) for migration from v0.1.1.
   19:00 exclusive, and use `day` / `未知` for unknown codes, including `-1`.
 - Embed all 33 SVG resources with the standard library and remove the old
   minifier/parser module dependencies.
+- Add a Flare-style consumer example with cache refresh, failure retry spacing,
+  stale-data indicators and opt-in live cache/location integration tests.
 
 Existing request functions keep their signatures and preserve raw timestamps.
 Corrected condition descriptions may change display strings. Code that relied
