@@ -1,14 +1,57 @@
 package weather
 
 import (
+	"errors"
+	"net/http"
 	"testing"
 )
 
 func TestGetMyIPLocation(t *testing.T) {
-	t.Run("Test `GetMyIPLocation` API is alive", func(t *testing.T) {
-		_, err := GetMyIPLocation()
-		if err != nil {
-			t.Errorf("`myip.ipip.net` error '%s'", err)
-		}
-	})
+	tests := []struct {
+		name      string
+		body      string
+		want      string
+		wantError bool
+	}{
+		{name: "province and city", body: `{"ret":"ok","data":{"location":["中国","浙江","杭州"]}}`, want: "浙江省杭州市"},
+		{name: "Beijing municipality", body: `{"ret":"ok","data":{"location":["中国","北京","北京"]}}`, want: "北京市"},
+		{name: "Shanghai municipality", body: `{"ret":"ok","data":{"location":["中国","上海","上海"]}}`, want: "上海市"},
+		{name: "Chongqing municipality", body: `{"ret":"ok","data":{"location":["中国","重庆","重庆"]}}`, want: "重庆市"},
+		{name: "Tianjin municipality", body: `{"ret":"ok","data":{"location":["中国","天津","天津"]}}`, want: "天津市"},
+		{name: "surrounding whitespace", body: `{"ret":"ok","data":{"location":[" 中国 "," 浙江 "," 杭州 "]}}`, want: "浙江省杭州市"},
+		{name: "missing data", body: `{"ret":"ok"}`, wantError: true},
+		{name: "missing location", body: `{"ret":"ok","data":{}}`, wantError: true},
+		{name: "null location", body: `{"ret":"ok","data":{"location":null}}`, wantError: true},
+		{name: "empty location", body: `{"ret":"ok","data":{"location":[]}}`, wantError: true},
+		{name: "country only", body: `{"ret":"ok","data":{"location":["中国"]}}`, wantError: true},
+		{name: "missing city", body: `{"ret":"ok","data":{"location":["中国","浙江"]}}`, wantError: true},
+		{name: "empty country", body: `{"ret":"ok","data":{"location":["","浙江","杭州"]}}`, wantError: true},
+		{name: "empty province", body: `{"ret":"ok","data":{"location":["中国"," ","杭州"]}}`, wantError: true},
+		{name: "empty city", body: `{"ret":"ok","data":{"location":["中国","浙江",""]}}`, wantError: true},
+		{name: "foreign location", body: `{"ret":"ok","data":{"location":["日本","东京都","东京"]}}`, wantError: true},
+		{name: "malformed JSON", body: `{"data":`, wantError: true},
+		{name: "wrong location type", body: `{"ret":"ok","data":{"location":"中国"}}`, wantError: true},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			got, err := getMyIPLocation(fixtureClient(test.body))
+			if (err != nil) != test.wantError {
+				t.Fatalf("getMyIPLocation() error = %v, wantError %v", err, test.wantError)
+			}
+			if got != test.want {
+				t.Errorf("getMyIPLocation() = %q, want %q", got, test.want)
+			}
+		})
+	}
+}
+
+func TestGetMyIPLocationRequestFailure(t *testing.T) {
+	requestError := errors.New("request failed")
+	client := &http.Client{Transport: fixtureTransport(func(*http.Request) (*http.Response, error) {
+		return nil, requestError
+	})}
+	location, err := getMyIPLocation(client)
+	if !errors.Is(err, requestError) || location != "" {
+		t.Fatalf("getMyIPLocation() = (%q, %v), want empty location and request error", location, err)
+	}
 }
