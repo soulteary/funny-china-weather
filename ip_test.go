@@ -1,8 +1,10 @@
 package weather
 
 import (
+	"context"
 	"errors"
 	"net/http"
+	"strings"
 	"testing"
 )
 
@@ -34,7 +36,7 @@ func TestGetMyIPLocation(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			got, err := getMyIPLocation(fixtureClient(test.body))
+			got, err := getMyIPLocation(context.Background(), fixtureClient(test.body))
 			if (err != nil) != test.wantError {
 				t.Fatalf("getMyIPLocation() error = %v, wantError %v", err, test.wantError)
 			}
@@ -50,8 +52,25 @@ func TestGetMyIPLocationRequestFailure(t *testing.T) {
 	client := &http.Client{Transport: fixtureTransport(func(*http.Request) (*http.Response, error) {
 		return nil, requestError
 	})}
-	location, err := getMyIPLocation(client)
+	location, err := getMyIPLocation(context.Background(), client)
 	if !errors.Is(err, requestError) || location != "" {
 		t.Fatalf("getMyIPLocation() = (%q, %v), want empty location and request error", location, err)
+	}
+}
+
+func TestGetMyIPLocationBusinessStatus(t *testing.T) {
+	tests := []struct{ name, body string }{
+		{name: "failure with valid location", body: `{"ret":"error","data":{"location":["中国","浙江","杭州"]}}`},
+		{name: "missing ret", body: `{"data":{"location":["中国","浙江","杭州"]}}`},
+		{name: "null ret", body: `{"ret":null,"data":{"location":["中国","浙江","杭州"]}}`},
+		{name: "business before data", body: `{"ret":"error"}`},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			location, err := getMyIPLocation(context.Background(), fixtureClient(test.body))
+			if err == nil || location != "" || !strings.Contains(err.Error(), "ipip: unexpected ret") {
+				t.Fatalf("location/error = %q/%v, want empty location and ret error", location, err)
+			}
+		})
 	}
 }

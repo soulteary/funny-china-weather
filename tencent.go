@@ -1,11 +1,13 @@
 package weather
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/url"
 	"regexp"
 	"strconv"
+	"strings"
 )
 
 type responseTencentWeather struct {
@@ -29,10 +31,10 @@ type responseTencentWeather struct {
 
 // GetWeatherByLocation returns current weather and the unmodified upstream update time.
 func GetWeatherByLocation(location string) (code int, degree int, humidity int, updateTime string, err error) {
-	return getWeatherByLocation(location, newHTTPClient(3))
+	return getWeatherByLocation(context.Background(), location, defaultHTTPClient)
 }
 
-func getWeatherByLocation(location string, client httpDoer) (code int, degree int, humidity int, updateTime string, err error) {
+func getWeatherByLocation(ctx context.Context, location string, client httpDoer) (code int, degree int, humidity int, updateTime string, err error) {
 
 	province := ""
 	city := ""
@@ -48,19 +50,23 @@ func getWeatherByLocation(location string, client httpDoer) (code int, degree in
 			province = url.QueryEscape(matched[0][1])
 			city = url.QueryEscape(matched[0][2])
 		} else {
-			return 0, 0, 0, "", errors.New("地址位置参数内容有误")
+			return 0, 0, 0, "", errors.New("tencent: 地址位置参数内容有误")
 		}
 	}
 
 	if province == "" || city == "" {
-		return 0, 0, 0, "", errors.New("地址位置参数不能为空")
+		return 0, 0, 0, "", errors.New("tencent: 地址位置参数不能为空")
 	}
 
 	response := new(responseTencentWeather)
 
-	fetchErr := getJSONWithClient(client, "https://wis.qq.com/weather/common?source=pc&weather_type=observe&province="+province+"&city="+city, response)
+	fetchErr := getJSONWithClient(ctx, client, "tencent", "https://wis.qq.com/weather/common?source=pc&weather_type=observe&province="+province+"&city="+city, response)
 	if fetchErr != nil {
 		return 0, 0, 0, "", fetchErr
+	}
+
+	if response.Status != 200 {
+		return 0, 0, 0, "", fmt.Errorf("tencent: unexpected status %d: %s", response.Status, response.Message)
 	}
 
 	code, parseIntError := strconv.Atoi(response.Data.Observe.WeatherCode)
@@ -77,8 +83,12 @@ func getWeatherByLocation(location string, client httpDoer) (code int, degree in
 		return 0, 0, 0, "", fmt.Errorf("tencent: invalid humidity: %w", parseIntError)
 	}
 
+	if humidity < 0 || humidity > 100 {
+		return 0, 0, 0, "", fmt.Errorf("tencent: humidity must be between 0 and 100; got %d", humidity)
+	}
+
 	updateTime = response.Data.Observe.UpdateTime
-	if updateTime == "" {
+	if strings.TrimSpace(updateTime) == "" {
 		return 0, 0, 0, "", errors.New("tencent: update_time is empty")
 	}
 	return code, degree, humidity, updateTime, nil
