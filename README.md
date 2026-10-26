@@ -2,9 +2,9 @@
 
 一城晴雨，片刻可知。
 
-**简体中文** | [English](README.en.md)
-
 [![Go Report Card](.github/goreportcard.svg)](.github/goreportcard-report.md) [![Coverage](.github/coverage.svg)](.github/go-test-report.md)
+
+**简体中文** | [English](README.en.md)
 
 晴雨笺是一个轻量的 Go 天气库：查询中国境内城市的实时天气，根据出口 IP 定位，并按天气代码选择可直接嵌入页面的 SVG 图标。适合个人主页、仪表盘和 Flare 等应用。
 
