@@ -4,8 +4,8 @@
 
 | Metric | Value |
 | --- | --- |
-| Total | 95 |
-| Passed | 95 |
+| Total | 100 |
+| Passed | 100 |
 | Failed | 0 |
 | Skipped | 0 |
 | Coverage | 99.09% |
@@ -15,6 +15,6 @@
 
 | Package | Status | Tests | Failed | Coverage |
 | --- | --- | --- | --- | --- |
-| . | pass | 85 | 0 | 99.54% |
+| . | pass | 89 | 0 | 99.54% |
 | examples/flare | pass | 5 | 0 | 100.00% |
-| examples/icon-preview | pass | 5 | 0 | 96.74% |
+| examples/icon-preview | pass | 6 | 0 | 96.84% |
