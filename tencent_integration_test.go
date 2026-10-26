@@ -6,7 +6,7 @@ package weather
 import "testing"
 
 func TestGetWeatherByLocationIntegration(t *testing.T) {
-	_, _, _, updateTime, err := GetWeatherByLocation("北京市")
+	_, _, _, updateTime, err := GetWeatherByLocation("北京, 北京")
 	if err != nil {
 		t.Fatalf("Tencent request failed: %v", err)
 	}

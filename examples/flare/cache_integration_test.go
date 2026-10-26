@@ -26,24 +26,24 @@ func TestLiveCacheIntegration(t *testing.T) {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
-	first := c.Get(ctx, "北京市")
+	first := c.Get(ctx, "北京, 北京")
 	if first.LastError != nil || !first.Available {
 		t.Fatalf("initial live fetch: %+v", first)
 	}
 	if _, err := weather.ParseUpdateTime(first.Observation.UpdateTime); err != nil {
 		t.Fatal(err)
 	}
-	cached := c.Get(ctx, "北京市")
+	cached := c.Get(ctx, "北京, 北京")
 	if calls != 1 || cached.Observation != first.Observation || cached.NextAttempt != first.NextAttempt {
 		t.Fatal("cache hit changed data or fetched again")
 	}
 	at = first.NextAttempt.Add(-time.Nanosecond)
-	c.Get(ctx, "北京市")
+	c.Get(ctx, "北京, 北京")
 	if calls != 1 {
 		t.Fatal("refreshed before expiry")
 	}
 	at = first.NextAttempt
-	refreshed := c.Get(ctx, "北京市")
+	refreshed := c.Get(ctx, "北京, 北京")
 	if calls != 2 || refreshed.LastError != nil || !refreshed.Available || !refreshed.NextAttempt.Equal(at.Add(refreshInterval)) {
 		t.Fatalf("live refresh: calls=%d view=%+v", calls, refreshed)
 	}

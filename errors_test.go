@@ -15,7 +15,7 @@ func TestStructuredErrors(t *testing.T) {
 		client := &http.Client{Transport: fixtureTransport(func(request *http.Request) (*http.Response, error) {
 			return &http.Response{StatusCode: 429, Header: make(http.Header), Body: http.NoBody, Request: request}, nil
 		})}
-		_, err := getObservation(context.Background(), "北京市", client)
+		_, err := getObservation(context.Background(), "北京, 北京", client)
 		return err
 	}
 	tests := []struct {
@@ -23,10 +23,10 @@ func TestStructuredErrors(t *testing.T) {
 		httpStatus                         int
 		call                               func() error
 	}{
-		{name: "input", provider: "tencent", stage: "input", field: "location", call: func() error { _, err := GetObservation(context.Background(), "invalid"); return err }},
+		{name: "input", provider: "tencent", stage: "input", field: "location", call: func() error { _, err := GetObservation(context.Background(), ""); return err }},
 		{name: "rate limit", provider: "tencent", stage: "http", httpStatus: 429, call: httpFailure},
 		{name: "Tencent business", provider: "tencent", stage: "business", code: "429", call: func() error {
-			_, err := getObservation(context.Background(), "北京市", fixtureClient(`{"status":429,"message":"limited"}`))
+			_, err := getObservation(context.Background(), "北京, 北京", fixtureClient(`{"status":429,"message":"limited"}`))
 			return err
 		}},
 		{name: "IPIP business", provider: "ipip", stage: "business", code: "error", call: func() error {
@@ -42,15 +42,15 @@ func TestStructuredErrors(t *testing.T) {
 			return err
 		}},
 		{name: "numeric field", provider: "tencent", stage: "field", field: "degree", call: func() error {
-			_, err := getObservation(context.Background(), "北京市", fixtureClient(weatherFixture(map[string]string{"degree": "invalid"})))
+			_, err := getObservation(context.Background(), "北京, 北京", fixtureClient(weatherFixture(map[string]string{"degree": "invalid"})))
 			return err
 		}},
 		{name: "decode", provider: "tencent", stage: "decode", call: func() error {
-			_, err := getObservation(context.Background(), "北京市", fixtureClient(`{`))
+			_, err := getObservation(context.Background(), "北京, 北京", fixtureClient(`{`))
 			return err
 		}},
 		{name: "response limit", provider: "tencent", stage: "size", call: func() error {
-			_, err := getObservation(context.Background(), "北京市", fixtureClient(strings.Repeat("x", maxJSONResponseBytes+1)))
+			_, err := getObservation(context.Background(), "北京, 北京", fixtureClient(strings.Repeat("x", maxJSONResponseBytes+1)))
 			return err
 		}},
 	}

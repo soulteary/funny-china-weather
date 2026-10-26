@@ -24,7 +24,10 @@ type Observation struct {
 	UpdateTime string
 }
 
-// GetObservation returns current weather and the provider's weather descriptions.
+// GetObservation searches a Tencent keyword (for example 北京), or accepts a
+// Location.String() address, and returns the provider's current observation.
+// Multiple search matches return ErrAmbiguousLocation; use SearchLocations and
+// GetObservationAt to explicitly select a location.
 // The request respects ctx and the shared three-second client timeout.
 // ctx must not be nil. An error returns a zero Observation.
 func GetObservation(ctx context.Context, location string) (Observation, error) {

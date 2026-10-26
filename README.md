@@ -28,63 +28,92 @@
 需要 **Go 1.27.3 或更高版本**。
 
 ```sh
-go get github.com/soulteary/funny-china-weather@v0.3.0
+go get github.com/soulteary/funny-china-weather@main
 ```
 
-查询北京天气，并取得对应图标的名称：
+以下接口属于当前开发版，安装命令使用 `@main`。
+
+**地点选择方式请参考 [腾讯天气](https://tianqi.qq.com/)**：搜索后选中具体的市、区或县，保留该地点对应的省、市、区县字段。同名地点需要结合上级地区确认。
+
+下面以腾讯天气中的“湖南 → 常德 → 津市”为例，查询天气并取得图标名称：
 
 ```go
 package main
 
 import (
+    "context"
     "fmt"
     "log"
+    "time"
 
     weather "github.com/soulteary/funny-china-weather"
 )
 
 func main() {
-    code, degree, humidity, updated, err := weather.GetWeatherByLocation("北京市")
+    ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+    defer cancel()
+
+    selected := weather.Location{
+        Province: "湖南",
+        City:     "常德",
+        County:   "津市",
+    }
+    observation, err := weather.GetObservationAt(ctx, selected)
     if err != nil {
         log.Fatal(err)
     }
-    key, description := weather.GetWeatherIconByCode(code)
+    key, description := weather.GetWeatherIconByCode(observation.Code)
     fmt.Printf("%d°C, %d%% humidity, %s (%s), updated %s\n",
-        degree, humidity, description, key, updated)
+        observation.TemperatureC, observation.HumidityPercent,
+        description, key, observation.UpdateTime)
 }
 ```
 
-返回值依次为天气代码、摄氏温度、相对湿度（整数百分比）和上游原始更新时间。时间字符串通常形如 `202610250745`（`YYYYMMDDHHMM`）；查询接口保留原值，不自动解析或转换时区。未识别的整数天气代码仍是有效观测数据，图标会使用 `unknown` 兜底。
+`Observation` 包含天气代码、摄氏温度、相对湿度（整数百分比）、天气描述和上游原始更新时间。时间字符串通常形如 `202610250745`（`YYYYMMDDHHMM`），查询时保留原值。未知整数天气代码仍是有效观测数据，图标使用 `unknown` 兜底。
 
 从 v0.2.0 升级时，请先阅读 [图标命名与迁移说明](docs/icon-names.md)。v0.3.0 移除了旧图标名称，未提供别名；直接传递选择器结果的调用方式保持兼容。Flare 升级后应重启以清除旧缓存。
 
 ## 查询天气
 
-### 支持的地址
+### 搜索并选择具体地点
 
-直辖市可以直接使用 `北京市`、`上海市`、`天津市`、`重庆市`；其他地区使用“省或自治区 + 城市”格式，例如：
+使用方式与 [腾讯天气](https://tianqi.qq.com/) 的地点选择一致：**输入关键词 → 查看候选 → 确认具体地点 → 查询天气**。例如“朝阳”可能对应不同省市的区或城市，不能只凭关键词确定目标。
 
-- `浙江省杭州市`
-- `广西壮族自治区南宁市`
-- `内蒙古自治区呼和浩特市`
-- `宁夏回族自治区银川市`
-- `西藏自治区拉萨市`
-- `新疆维吾尔自治区乌鲁木齐市`
+`SearchLocations` 调用腾讯地名目录，返回 `Location` 候选。请选择并保存目标候选，再传给 `GetObservationAt`。库直接使用腾讯返回的名称，不自行增删“省”“市”等后缀。
 
-会去除首尾空白，并规范化已知简称：`北京` → `北京市`，`广西南宁市` → `广西壮族自治区南宁市`。`广西省` 等历史写法也可识别，新代码建议使用现行名称。省份后需要完整的市、自治州、地区或盟名称，分别以 `市`、`自治州`、`地区`、`盟` 结尾。
+以下示例查询“津市”；仅有一个候选时可直接使用，多个候选时应展示给用户选择：
 
-不支持仅有区县的地址、经纬度和境外地址。重复的行政层级、直辖市名称不匹配、无效 UTF-8 和不可见格式字符会被拒绝。地址校验通过不代表腾讯一定提供该地区的天气数据。
+```go
+locations, err := weather.SearchLocations(ctx, "津市")
+if err != nil {
+    return err
+}
+if len(locations) != 1 {
+    return fmt.Errorf("select one of %d locations", len(locations))
+}
+selected := locations[0]
+observation, err := weather.GetObservationAt(ctx, selected)
+if err != nil {
+    return err
+}
+fmt.Println(selected.ID, selected.Province, selected.City, selected.County)
+fmt.Println(observation.TemperatureC)
+```
 
-`湖南省津市市` 等真实地名可正常使用。IP 定位还识别 `大兴安岭`、`阿拉善`、`锡林郭勒` 的已知简称；这些规则只是少量别名，并非完整行政区划数据库。
+`Location` 包含 `ID`（天气城市编码）、`Province`、`City` 和 `County`。例如“津市”返回 `湖南 / 常德 / 津市`，请求时会发送 `province=湖南&city=常德&county=津市`。名称保持腾讯返回的写法，城市编码只用于标识候选，天气请求仍使用地点字段。
+
+`SearchLocations` 返回按编码排序的候选，无匹配时返回空切片；排序不代表推荐顺序。应展示候选的省、市、区县，并用 `ID` 区分地点。`GetObservationAt` 使用选定地点，不重复搜索。
+
+建议在配置或用户选择时搜索一次，保存 `Location`，后续直接查询。库不自动缓存搜索结果。示例片段放在返回 `error` 的函数中，并导入 `fmt`。
 
 ### 使用 context 与结构化结果
 
-需要超时控制或上游天气描述时，使用 `GetObservation`。以下片段放在返回 `error` 的函数中，并添加 `context`、`time` 和 `fmt` 导入：
+对已经选定的 `selected` 地点设置请求截止时间，并按应用需要检查数据新鲜度。以下片段放在返回 `error` 的函数中，添加 `context`、`time` 和 `fmt` 导入：
 
 ```go
 ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 defer cancel()
-observation, err := weather.GetObservation(ctx, "广西南宁市")
+observation, err := weather.GetObservationAt(ctx, selected)
 if err != nil {
     return err
 }
@@ -107,17 +136,9 @@ fmt.Println("stale:", stale)
 
 ### 根据出口 IP 定位
 
-```go
-location, err := weather.GetMyIPLocation()
-if err != nil {
-    return err
-}
-code, degree, humidity, updated, err := weather.GetWeatherByLocation(location)
-```
+`GetMyIPLocation` 先通过 IPIP 获取出口 IP 所在城市，再用该城市原文搜索腾讯目录，仅保留省份字段与 IPIP 完全一致的候选。不会改写省名或补后缀；无匹配、多个候选或任一上游失败都会返回错误。搜索阶段的错误来自 `tencent`，IP 查询阶段的错误来自 `ipip`。
 
-`GetMyIPLocation` 返回出口 IP 对应的规范化中文地址，可直接传给天气查询接口。它反映代理或 VPN 等出口连接的位置。国家、省份或城市缺失，以及境外地址，都会返回错误。
-
-需要取消请求时，使用 `GetMyIPLocationContext(ctx)` 和 `GetWeatherByLocationContext(ctx, location)`；返回值与原接口一致。
+IP 定位只是自动选择地点的辅助方式，反映代理或 VPN 等出口连接的位置。如果需要指定城市或区县，仍应参考 [腾讯天气](https://tianqi.qq.com/) 搜索并选中具体地点。
 
 ## 使用 SVG 图标
 
@@ -165,16 +186,7 @@ go run ./examples/icon-preview
 
 ## API 与兼容性
 
-保留的原有函数：
-
-```go
-func GetMyIPLocation() (string, error)
-func GetWeatherByLocation(location string) (code int, degree int, humidity int, updateTime string, err error)
-func GetWeatherIconByCode(weatherCode int) (string, string)
-func GetSVGCodeByName(name string) template.HTML
-```
-
-补充接口：
+推荐使用的接口：
 
 ```go
 func GetWeatherIconAt(code int, at time.Time) (key, name string)
@@ -182,20 +194,18 @@ func GetIconSVG(key string) (svg string, ok bool)
 func GetIconSVGWithPrefix(key, prefix string) (svg string, ok bool)
 func GetStaticIconSVG(key string) (svg string, ok bool)
 func GetMyIPLocationContext(ctx context.Context) (string, error)
-func GetWeatherByLocationContext(ctx context.Context, location string) (int, int, int, string, error)
-func GetObservation(ctx context.Context, location string) (Observation, error)
+func SearchLocations(ctx context.Context, keyword string) ([]Location, error)
+func GetObservationAt(ctx context.Context, location Location) (Observation, error)
 func ParseUpdateTime(raw string) (time.Time, error)
 ```
 
-`Observation` 还提供 `Age` 和 `IsStale` 方法。`GetSVGCodeByName` 为 v0.1.1 调用方保留，返回可用于 `html/template` 的可信内置 SVG；未知名称返回空值。新代码建议使用 `GetIconSVG`。
-
-函数签名兼容不等于图标名称兼容。旧名称的迁移见 [v0.3.0 发布说明](docs/releases/v0.3.0.md) 和 [变更记录](CHANGELOG.md)。`@main` 获取开发代码；合并代码不会自动发布版本。发布流程见 [发布指南](docs/releasing.md)。
+`Observation` 还提供 `Age` 和 `IsStale` 方法。天气查询示例统一采用选定的 `Location` 与 `GetObservationAt`；图标迁移见 [v0.3.0 发布说明](docs/releases/v0.3.0.md) 和 [变更记录](CHANGELOG.md)。当前地名选择接口尚未发布为稳定版本，`@main` 获取开发代码。发布流程见 [发布指南](docs/releasing.md)。
 
 ## 网络请求与错误处理
 
-IP 定位调用 IPIP 的 `https://myip.ipip.net/json`，天气查询调用腾讯的 `https://wis.qq.com/weather/common`。服务可用性、响应格式和城市覆盖由上游决定。
+IP 定位调用 IPIP 的 `https://myip.ipip.net/json`，地名搜索调用腾讯的 `https://i.news.qq.com/city/like`，天气查询调用腾讯的 `https://wis.qq.com/weather/common`。服务可用性、响应格式和城市覆盖由上游决定。
 
-所有请求共用一个总超时为 **3 秒** 的 HTTP 客户端，不自动重试。响应必须为 HTTP 2xx、大小不超过 **1 MiB**，并包含单个有效 JSON 值；允许未知字段。
+所有请求共用 HTTP 客户端，**每次 HTTP 请求最多 3 秒**，不自动重试。关键词天气查询和 IP 地点解析各包含两个顺序请求；需要限制整个操作的总时长时，请通过 `context` 设置截止时间。响应必须为 HTTP 2xx、大小不超过 **1 MiB**，并包含单个有效 JSON 值；允许未知字段。
 
 IPIP 的 `ret` 必须为 `ok`，腾讯的业务 `status` 必须为 `200`。天气代码、温度和湿度必须能解析为整数，湿度范围为 0～100，更新时间不得为空。必需字段无效时返回错误，不返回部分天气数据。
 

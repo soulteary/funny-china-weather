@@ -10,12 +10,12 @@ import (
 
 func TestGetObservationPreservesProviderFields(t *testing.T) {
 	fields := map[string]string{"weather_code": "999", "degree": "-4", "weather": " 上游天气描述 ", "weather_short": "上游简述", "update_time": "not-a-date"}
-	got, err := getObservation(context.Background(), "北京市", fixtureClient(weatherFixture(fields)))
+	got, err := getObservation(context.Background(), "北京, 北京", fixtureClient(weatherFixture(fields)))
 	want := Observation{Code: 999, TemperatureC: -4, HumidityPercent: 81, Description: fields["weather"], ShortDescription: fields["weather_short"], UpdateTime: fields["update_time"]}
 	if err != nil || got != want {
 		t.Fatalf("getObservation() = %#v, %v; want %#v", got, err, want)
 	}
-	code, degree, humidity, updated, err := getWeatherByLocation(context.Background(), "北京市", fixtureClient(weatherFixture(fields)))
+	code, degree, humidity, updated, err := getWeatherByLocation(context.Background(), "北京, 北京", fixtureClient(weatherFixture(fields)))
 	if err != nil || code != got.Code || degree != got.TemperatureC || humidity != got.HumidityPercent || updated != got.UpdateTime {
 		t.Fatalf("tuple wrapper disagrees with structured observation: (%d,%d,%d,%q), %v", code, degree, humidity, updated, err)
 	}
@@ -24,7 +24,7 @@ func TestGetObservationPreservesProviderFields(t *testing.T) {
 func TestGetObservationDoesNotEnforceFreshness(t *testing.T) {
 	for _, raw := range []string{"not-a-date", "197001010000", "209901010000"} {
 		t.Run(raw, func(t *testing.T) {
-			got, err := getObservation(context.Background(), "北京市", fixtureClient(weatherFixture(map[string]string{"update_time": raw})))
+			got, err := getObservation(context.Background(), "北京, 北京", fixtureClient(weatherFixture(map[string]string{"update_time": raw})))
 			if err != nil || got.UpdateTime != raw {
 				t.Fatalf("getObservation() = %#v, %v; want preserved raw timestamp", got, err)
 			}
@@ -33,7 +33,7 @@ func TestGetObservationDoesNotEnforceFreshness(t *testing.T) {
 }
 
 func TestGetObservationAllowsMissingDescriptions(t *testing.T) {
-	got, err := getObservation(context.Background(), "北京市", fixtureClient(weatherFixture(nil)))
+	got, err := getObservation(context.Background(), "北京, 北京", fixtureClient(weatherFixture(nil)))
 	if err != nil || got.Description != "" || got.ShortDescription != "" {
 		t.Fatalf("optional descriptions = %q / %q, error = %v", got.Description, got.ShortDescription, err)
 	}
@@ -41,7 +41,7 @@ func TestGetObservationAllowsMissingDescriptions(t *testing.T) {
 
 func TestGetObservationReturnsZeroOnError(t *testing.T) {
 	for _, body := range []string{`{"status":500,"message":"failed"}`, weatherFixture(map[string]string{"humidity": "101"}), weatherFixture(map[string]string{"update_time": ""})} {
-		got, err := getObservation(context.Background(), "北京市", fixtureClient(body))
+		got, err := getObservation(context.Background(), "北京, 北京", fixtureClient(body))
 		if err == nil || got != (Observation{}) {
 			t.Fatalf("getObservation() = %#v, %v; want zero observation and error", got, err)
 		}
@@ -160,7 +160,7 @@ func TestGetObservationInFlightCancellation(t *testing.T) {
 			return nil, errors.New("test request released")
 		}
 	})}
-	go func() { _, err := getObservation(ctx, "北京市", client); completed <- err }()
+	go func() { _, err := getObservation(ctx, "北京, 北京", client); completed <- err }()
 	select {
 	case <-started:
 	case <-time.After(2 * time.Second):

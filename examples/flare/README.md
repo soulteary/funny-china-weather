@@ -5,6 +5,12 @@ home-page weather flow without changing the adjacent Flare repository.
 
 Create one `cache := flare.NewCache()` for the application, then pass
 `cache.Get(request.Context(), location)` to the page template on each request.
+Follow [Tencent Weather](https://tianqi.qq.com/) to select a specific city,
+district, or county. Search with `weather.SearchLocations` during configuration,
+let the user choose the intended candidate, and pass its `Location.String()`
+to the cache. This retains provider fields and skips directory lookup on refresh.
+Do not construct an address by adding province or city suffixes.
+
 For example, render the returned `View` with:
 
 ```html

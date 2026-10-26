@@ -27,7 +27,8 @@ type responseTencentWeather struct {
 	Status  int    `json:"status"`
 }
 
-// GetWeatherByLocation returns current weather and the unmodified upstream update time.
+// GetWeatherByLocation searches a Tencent keyword or accepts a Location.String()
+// address, then returns current weather and the original upstream update time.
 func GetWeatherByLocation(location string) (code int, degree int, humidity int, updateTime string, err error) {
 	return GetWeatherByLocationContext(context.Background(), location)
 }
@@ -48,15 +49,29 @@ func getWeatherByLocation(ctx context.Context, location string, client httpDoer)
 }
 
 func getObservation(ctx context.Context, location string, client httpDoer) (Observation, error) {
-	parsed, parseErr := parseLocation(location)
-	if parseErr != nil {
-		return Observation{}, &Error{Provider: "tencent", Stage: "input", Field: "location", Err: fmt.Errorf("invalid location: %w", parseErr)}
+	resolved, err := resolveLocation(ctx, location, client)
+	if err != nil {
+		return Observation{}, err
+	}
+	return getObservationAt(ctx, resolved, client)
+}
+
+// GetObservationAt fetches weather for a selected Tencent location, including
+// its county. It does not repeat the search or rewrite provider names.
+func GetObservationAt(ctx context.Context, location Location) (Observation, error) {
+	return getObservationAt(ctx, location, defaultHTTPClient)
+}
+
+func getObservationAt(ctx context.Context, location Location, client httpDoer) (Observation, error) {
+	if err := validateLocation(location); err != nil {
+		return Observation{}, err
 	}
 	query := url.Values{
 		"source":       {"pc"},
 		"weather_type": {"observe"},
-		"province":     {parsed.province},
-		"city":         {parsed.city},
+		"province":     {location.Province},
+		"city":         {location.City},
+		"county":       {location.County},
 	}
 	response := new(responseTencentWeather)
 	if err := getJSONWithClient(ctx, client, "tencent", "https://wis.qq.com/weather/common?"+query.Encode(), response); err != nil {
@@ -92,4 +107,16 @@ func getObservation(ctx context.Context, location string, client httpDoer) (Obse
 		ShortDescription: response.Data.Observe.WeatherShort,
 		UpdateTime:       updated,
 	}, nil
+}
+
+func validateLocation(location Location) error {
+	for _, value := range []string{location.Province, location.City} {
+		if !validLocationText(value) || strings.Contains(value, ",") {
+			return locationError("input", "location", fmt.Errorf("province and city must be nonempty provider fields"))
+		}
+	}
+	if location.County != "" && (!validLocationText(location.County) || strings.Contains(location.County, ",")) {
+		return locationError("input", "location", fmt.Errorf("invalid county field"))
+	}
+	return nil
 }

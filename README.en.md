@@ -28,63 +28,92 @@ The animation below shows clear skies by day and night, clouds, showers, heavy s
 Requires **Go 1.27.3 or later**.
 
 ```sh
-go get github.com/soulteary/funny-china-weather@v0.3.0
+go get github.com/soulteary/funny-china-weather@main
 ```
 
-Fetch Beijing's current weather and select its icon name:
+These APIs are part of the current development version, so installation uses `@main`.
+
+**Follow the location selection in [Tencent Weather](https://tianqi.qq.com/)**: search, select a specific city, district, or county, and retain its province/city/county fields. Check parent regions to distinguish places with the same name.
+
+This example uses Tencent Weather's `湖南 → 常德 → 津市` selection to fetch weather and select an icon:
 
 ```go
 package main
 
 import (
+    "context"
     "fmt"
     "log"
+    "time"
 
     weather "github.com/soulteary/funny-china-weather"
 )
 
 func main() {
-    code, degree, humidity, updated, err := weather.GetWeatherByLocation("北京市")
+    ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+    defer cancel()
+
+    selected := weather.Location{
+        Province: "湖南",
+        City:     "常德",
+        County:   "津市",
+    }
+    observation, err := weather.GetObservationAt(ctx, selected)
     if err != nil {
         log.Fatal(err)
     }
-    key, description := weather.GetWeatherIconByCode(code)
+    key, description := weather.GetWeatherIconByCode(observation.Code)
     fmt.Printf("%d°C, %d%% humidity, %s (%s), updated %s\n",
-        degree, humidity, description, key, updated)
+        observation.TemperatureC, observation.HumidityPercent,
+        description, key, observation.UpdateTime)
 }
 ```
 
-The return values are the weather code, temperature in degrees Celsius, relative humidity as an integer percentage, and the original upstream update time. A typical timestamp is `202610250745` (`YYYYMMDDHHMM`); fetching preserves it without parsing or converting its time zone. Unrecognized integer weather codes remain valid observation data and use the `unknown` icon.
+`Observation` contains the weather code, temperature in degrees Celsius, relative humidity as an integer percentage, descriptions, and the original upstream update time. A typical timestamp is `202610250745` (`YYYYMMDDHHMM`), preserved as received. Unknown integer weather codes remain valid observation data and use the `unknown` icon.
 
 When upgrading from v0.2.0, read the [icon naming and migration guide](docs/icon-names.md). v0.3.0 removes old icon names without aliases; calls that pass selector results directly to SVG lookup retain their signatures. Restart Flare after upgrading to clear cached old keys.
 
 ## Fetch weather
 
-### Supported locations
+### Search and select a specific location
 
-Use municipality names directly: `北京市`, `上海市`, `天津市`, or `重庆市`. Elsewhere, provide a province or autonomous region followed by a city, for example:
+Follow the same flow as [Tencent Weather](https://tianqi.qq.com/): **enter a keyword → inspect candidates → confirm a specific place → fetch weather**. For example, `朝阳` can identify districts or cities in different regions; the keyword alone does not identify the intended place.
 
-- `浙江省杭州市`
-- `广西壮族自治区南宁市`
-- `内蒙古自治区呼和浩特市`
-- `宁夏回族自治区银川市`
-- `西藏自治区拉萨市`
-- `新疆维吾尔自治区乌鲁木齐市`
+`SearchLocations` queries Tencent's location directory and returns `Location` candidates. Select and retain the intended candidate, then pass it to `GetObservationAt`. The library uses the provider's names without adding or removing administrative suffixes.
 
-Surrounding whitespace and known short names are normalized: `北京` → `北京市`, `广西南宁市` → `广西壮族自治区南宁市`. Historical forms such as `广西省` are also accepted; prefer current names in new code. A province must be followed by a full city, autonomous-prefecture, prefecture, or league name ending in `市`, `自治州`, `地区`, or `盟`.
+The following example searches for `津市`. A single candidate can be used directly; present multiple candidates for the user to choose:
 
-District-only addresses, coordinates, and foreign locations are unsupported. Repeated administrative levels, mismatched municipality names, invalid UTF-8, and invisible format characters are rejected. Passing local validation does not establish whether Tencent has observations for that location.
+```go
+locations, err := weather.SearchLocations(ctx, "津市")
+if err != nil {
+    return err
+}
+if len(locations) != 1 {
+    return fmt.Errorf("select one of %d locations", len(locations))
+}
+selected := locations[0]
+observation, err := weather.GetObservationAt(ctx, selected)
+if err != nil {
+    return err
+}
+fmt.Println(selected.ID, selected.Province, selected.City, selected.County)
+fmt.Println(observation.TemperatureC)
+```
 
-Legitimate names such as `湖南省津市市` are accepted. IP geolocation also recognizes the known short forms `大兴安岭`, `阿拉善`, and `锡林郭勒`. These are a small alias set, not a complete administrative registry.
+`Location` contains `ID` (weather city code), `Province`, `City`, and `County`. For example, `津市` resolves to `湖南 / 常德 / 津市`, producing `province=湖南&city=常德&county=津市`. Names retain Tencent's spelling. The code identifies the candidate; weather requests still use the location fields.
+
+`SearchLocations` sorts candidates by code and returns an empty slice when none match. This order is not a recommendation ranking. Display province/city/county fields and use `ID` to identify a place. `GetObservationAt` fetches the selected location without searching again.
+
+Search during configuration or user selection and retain `Location` for subsequent requests. Directory results are not cached automatically. Place the snippet in a function returning `error`, and import `fmt`.
 
 ### Context and structured observations
 
-Use `GetObservation` for cancellation and upstream weather descriptions. Place this snippet inside a function returning `error`, and add imports for `context`, `time`, and `fmt`:
+Set a deadline for an already selected `selected` location and check freshness according to your application policy. Place this snippet in a function returning `error`, and import `context`, `time`, and `fmt`:
 
 ```go
 ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 defer cancel()
-observation, err := weather.GetObservation(ctx, "广西南宁市")
+observation, err := weather.GetObservationAt(ctx, selected)
 if err != nil {
     return err
 }
@@ -107,17 +136,9 @@ fmt.Println("stale:", stale)
 
 ### Locate the outgoing IP address
 
-```go
-location, err := weather.GetMyIPLocation()
-if err != nil {
-    return err
-}
-code, degree, humidity, updated, err := weather.GetWeatherByLocation(location)
-```
+`GetMyIPLocation` first gets the outgoing-IP city from IPIP, then searches Tencent with the unchanged city name and retains candidates whose province exactly matches IPIP's province. It does not rewrite province names or add suffixes. No match, multiple matches, or either provider failing returns an error. Directory errors identify `tencent`; IP lookup errors identify `ipip`.
 
-`GetMyIPLocation` returns a normalized Chinese location that can be passed directly to weather lookup. It reflects the outgoing connection, including proxies or VPNs. Missing country, province, or city data and locations outside China return an error.
-
-Use `GetMyIPLocationContext(ctx)` and `GetWeatherByLocationContext(ctx, location)` for cancellation; their return values match the original functions.
+IP geolocation is an optional way to choose a location automatically and reflects the outgoing connection, including proxies or VPNs. To specify a city, district, or county, search and select the intended place as in [Tencent Weather](https://tianqi.qq.com/).
 
 ## Use SVG icons
 
@@ -165,16 +186,7 @@ See the [gallery instructions](examples/icon-preview/README.md) for controls and
 
 ## API and compatibility
 
-Original functions retained:
-
-```go
-func GetMyIPLocation() (string, error)
-func GetWeatherByLocation(location string) (code int, degree int, humidity int, updateTime string, err error)
-func GetWeatherIconByCode(weatherCode int) (string, string)
-func GetSVGCodeByName(name string) template.HTML
-```
-
-Additional functions:
+Recommended APIs:
 
 ```go
 func GetWeatherIconAt(code int, at time.Time) (key, name string)
@@ -182,20 +194,18 @@ func GetIconSVG(key string) (svg string, ok bool)
 func GetIconSVGWithPrefix(key, prefix string) (svg string, ok bool)
 func GetStaticIconSVG(key string) (svg string, ok bool)
 func GetMyIPLocationContext(ctx context.Context) (string, error)
-func GetWeatherByLocationContext(ctx context.Context, location string) (int, int, int, string, error)
-func GetObservation(ctx context.Context, location string) (Observation, error)
+func SearchLocations(ctx context.Context, keyword string) ([]Location, error)
+func GetObservationAt(ctx context.Context, location Location) (Observation, error)
 func ParseUpdateTime(raw string) (time.Time, error)
 ```
 
-`Observation` also provides `Age` and `IsStale`. `GetSVGCodeByName` is retained for v0.1.1 callers and returns trusted bundled SVG as `html/template.HTML`, or an empty value for unknown names. Prefer `GetIconSVG` in new code.
-
-Function signature compatibility does not imply resource-name compatibility. See the [v0.3.0 release notes](docs/releases/v0.3.0.md) and [changelog](CHANGELOG.md) for migration. `@main` selects development code; merging does not publish a version. See the [release guide](docs/releasing.md) for publication steps.
+`Observation` also provides `Age` and `IsStale`. Weather examples consistently use a selected `Location` with `GetObservationAt`. See the [v0.3.0 release notes](docs/releases/v0.3.0.md) and [changelog](CHANGELOG.md) for icon migration. The current location-selection APIs are not yet in a stable release; `@main` selects development code. See the [release guide](docs/releasing.md) for publication steps.
 
 ## Network behavior and errors
 
-IP lookup calls IPIP's `https://myip.ipip.net/json`; weather lookup calls Tencent's `https://wis.qq.com/weather/common`. Availability, response formats, and city coverage depend on those providers.
+IP lookup calls IPIP's `https://myip.ipip.net/json`; location search calls Tencent's `https://i.news.qq.com/city/like`; weather lookup calls Tencent's `https://wis.qq.com/weather/common`. Availability, response formats, and city coverage depend on those providers.
 
-Requests share an HTTP client with a **three-second total timeout** and no automatic retries. Responses must have HTTP 2xx status, contain at most **1 MiB**, and decode as a single JSON value. Unknown fields are accepted.
+Requests share an HTTP client with a **three-second timeout per HTTP request** and no automatic retries. Keyword weather lookup and IP location resolution each make two sequential requests; use a context deadline to limit the entire operation. Responses must have HTTP 2xx status, contain at most **1 MiB**, and decode as a single JSON value. Unknown fields are accepted.
 
 IPIP must report `ret: "ok"`, and Tencent must report business `status: 200`. Weather code, temperature, and humidity must parse as integers; humidity must be between 0 and 100, and update time must be nonblank. Invalid required fields return an error rather than partial weather data.
 

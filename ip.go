@@ -15,14 +15,17 @@ type responseIPIP struct {
 	} `json:"data"`
 }
 
-// GetMyIPLocation returns the province and city associated with the outgoing IP.
+// GetMyIPLocation resolves the outgoing IP city through Tencent and returns a
+// comma-separated provider address accepted by the string weather APIs.
 func GetMyIPLocation() (string, error) {
 	return GetMyIPLocationContext(context.Background())
 }
 
-// GetMyIPLocationContext returns the province and city associated with the outgoing
-// IP while respecting ctx and the shared three-second client timeout. ctx must not
-// be nil. An error returns an empty location.
+// GetMyIPLocationContext looks up the IPIP city in Tencent's directory and
+// returns the selected Location.String() address. Province names must match
+// exactly across providers; no match or multiple matches return an error.
+// Both requests respect ctx and the shared three-second per-request timeout.
+// ctx must not be nil. An error returns an empty location.
 func GetMyIPLocationContext(ctx context.Context) (string, error) {
 	return getMyIPLocation(ctx, defaultHTTPClient)
 }
@@ -51,9 +54,21 @@ func getMyIPLocation(ctx context.Context, client httpDoer) (string, error) {
 		return "", &Error{Provider: "ipip", Stage: "field", Field: "data.location.country", Err: errors.New("非境内IP地址，放弃继续解析 :(")}
 	}
 
-	parsed, err := normalizeLocationFields(location[1], location[2])
+	// Search the city verbatim and use the province only to disambiguate exact
+	// provider fields. Never invent a suffix or choose a different province.
+	locations, err := searchLocations(ctx, location[2], client)
 	if err != nil {
-		return "", &Error{Provider: "ipip", Stage: "field", Field: "data.location", Err: fmt.Errorf("invalid data.location: %w", err)}
+		return "", err
 	}
-	return parsed.String(), nil
+	var matches []Location
+	for _, candidate := range locations {
+		if candidate.Province == location[1] {
+			matches = append(matches, candidate)
+		}
+	}
+	selected, err := uniqueLocation(matches)
+	if err != nil {
+		return "", err
+	}
+	return selected.String(), nil
 }
