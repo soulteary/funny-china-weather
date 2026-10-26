@@ -13,8 +13,8 @@
 | ----- | ----- |
 | go_vet | 100% |
 | gofmt | 100% |
-| ineffassign | 100% |
 | gocyclo | 73% |
+| ineffassign | 100% |
 | license | 100% |
 | misspell | 100% |
 
@@ -22,30 +22,30 @@
 
 ### gocyclo
 
-- `examples/icon-preview/main_test.go`
-  - Line 9: cyclomatic complexity 29 for function TestCompletePreview
-- `examples/icon-preview/main.go`
-  - Line 40: cyclomatic complexity 26 for function buildIcons
 - `icons_test.go`
   - Line 10: cyclomatic complexity 19 for function TestGetIconSVGAllResources
 - `examples/flare/cache_integration_test.go`
   - Line 18: cyclomatic complexity 18 for function TestLiveCacheIntegration
-- `icon_names_test.go`
-  - Line 11: cyclomatic complexity 17 for function TestCanonicalResourceNames
 - `location.go`
   - Line 153: cyclomatic complexity 16 for function parseLocation
 - `svg_composition.go`
   - Line 86: cyclomatic complexity 40 for function composeIconSVG
   - Line 262: cyclomatic complexity 32 for function rewriteSVGCSS
   - Line 24: cyclomatic complexity 22 for function collectSVGNames
+- `examples/icon-preview/main.go`
+  - Line 40: cyclomatic complexity 26 for function buildIcons
+- `errors_test.go`
+  - Line 13: cyclomatic complexity 20 for function TestStructuredErrors
+- `icon_names_test.go`
+  - Line 11: cyclomatic complexity 17 for function TestCanonicalResourceNames
 - `svg_composition_test.go`
   - Line 27: cyclomatic complexity 29 for function inspectSVG
   - Line 107: cyclomatic complexity 21 for function TestSVGCompositionAllAssets
   - Line 171: cyclomatic complexity 19 for function TestGetIconSVGWithPrefix
+- `examples/icon-preview/main_test.go`
+  - Line 9: cyclomatic complexity 29 for function TestCompletePreview
 - `examples/flare/cache_test.go`
   - Line 23: cyclomatic complexity 21 for function TestProviderFailureRetryAndRecovery
-- `errors_test.go`
-  - Line 13: cyclomatic complexity 20 for function TestStructuredErrors
 
 ---
 
