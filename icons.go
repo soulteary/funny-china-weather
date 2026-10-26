@@ -5,6 +5,8 @@ import (
 	"embed"
 	"encoding/hex"
 	"strconv"
+	"strings"
+	"sync"
 	"sync/atomic"
 )
 
@@ -78,9 +80,61 @@ func getIconSVG(key, prefix string, static bool) (string, bool) {
 			return "", false
 		}
 	}
-	data, err := iconFiles.ReadFile("icons/" + key + ".svg")
-	if err != nil {
+	cached, ok := compiledIcons[key]
+	if !ok {
 		return "", false
 	}
-	return composeIconSVG(string(data), prefix, static)
+	compile := cached.animated
+	if static {
+		compile = cached.static
+	}
+	parts, ok := compile()
+	if !ok {
+		return "", false
+	}
+	return strings.Join(parts, prefix), true
+}
+
+// Each trusted embedded resource has at most two lazy, immutable templates.
+// Split only a marker absent from the source, never a caller's prefix or an ID.
+// Rendering joins fragments with a fresh instance namespace without parsing XML.
+type compiledIcon struct {
+	animated func() ([]string, bool)
+	static   func() ([]string, bool)
+}
+
+var compiledIcons = newCompiledIcons()
+
+func newCompiledIcons() map[string]compiledIcon {
+	entries, err := iconFiles.ReadDir("icons")
+	if err != nil {
+		panic(err)
+	}
+	result := make(map[string]compiledIcon, len(entries))
+	for _, entry := range entries {
+		key := strings.TrimSuffix(entry.Name(), ".svg")
+		source := sync.OnceValue(func() string {
+			data, err := iconFiles.ReadFile("icons/" + key + ".svg")
+			if err != nil {
+				panic(err)
+			}
+			return string(data)
+		})
+		compile := func(static bool) func() ([]string, bool) {
+			return sync.OnceValues(func() ([]string, bool) {
+				raw := source()
+				marker := "fcw-template-marker"
+				for strings.Contains(raw, marker) {
+					marker += "x"
+				}
+				svg, ok := composeIconSVG(raw, marker, static)
+				if !ok {
+					return nil, false
+				}
+				return strings.Split(svg, marker), true
+			})
+		}
+		result[key] = compiledIcon{animated: compile(false), static: compile(true)}
+	}
+	return result
 }

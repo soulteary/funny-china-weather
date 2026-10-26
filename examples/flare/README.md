@@ -4,11 +4,10 @@ This package imports the current weather module directly. It models Flare's
 home-page weather flow without changing the adjacent Flare repository.
 
 Create one `cache := flare.NewCache()` for the application, then pass
-`cache.Get(request.Context(), location)` to the page template on each request.
+`cache.GetAt(request.Context(), selectedLocation)` to the page template on each request.
 Follow [Tencent Weather](https://tianqi.qq.com/) to select a specific city,
 district, or county. Search with `weather.SearchLocations` during configuration,
-let the user choose the intended candidate, and pass its `Location.String()`
-to the cache. This retains provider fields and skips directory lookup on refresh.
+let the user choose the intended candidate, and pass the selected `Location` to `cache.GetAt`. This retains provider fields and skips directory lookup on refresh.
 Do not construct an address by adding province or city suffixes.
 
 For example, render the returned `View` with:
@@ -34,11 +33,20 @@ Provider timestamps older than thirty minutes, malformed timestamps and future
 timestamps also mark data stale, even after a successful fetch. A successful
 refresh clears the failure flag; timestamp freshness is still checked.
 
-Icons are regenerated on each render to preserve unique inline SVG IDs. A mutex
-serializes refreshes and prevents duplicate requests; this intentionally simple
-example can block other readers during a refresh. It has no background refresh,
-eviction or per-location concurrency, and is intended for a small configured
-location set, like Flare's single-location home page.
+Icons receive fresh instance IDs on each render, using lazily compiled SVG
+templates. Refreshes are coalesced per location; other locations and rendering
+run without holding the map mutex. Waiting requests can cancel their own wait.
+The initiating request owns the refresh context; its cancellation is handled as
+a failed refresh with the usual retry interval.
+
+The cache holds at most 128 entries, including in-flight refreshes. On access it
+removes entries idle for one hour; at capacity it evicts the least recently used
+entry that is not refreshing. Refreshing entries are pinned. If every slot is
+refreshing, new locations wait for a completion or context cancellation. There
+is no background refresh or cleanup goroutine. Evicted entries lose their
+previous observation and retry schedule. `Get` remains available for keywords
+and serialized addresses; prefer `GetAt` for configured locations. The two
+methods use separate cache namespaces.
 
 Run `go test -race ./examples/flare` from the module root. Tests use a fake clock
 and intercepted HTTP responses, exercise the real `GetObservation` validation,
