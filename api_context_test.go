@@ -33,14 +33,14 @@ func TestPublicContextCancellation(t *testing.T) {
 				return err
 			}},
 			{name: "weather tuple", provider: "tencent", call: func(ctx context.Context) error {
-				code, degree, humidity, updated, err := weather.GetWeatherByLocationContext(ctx, "北京市")
+				code, degree, humidity, updated, err := weather.GetWeatherByLocationContext(ctx, "北京, 北京")
 				if code != 0 || degree != 0 || humidity != 0 || updated != "" {
 					t.Error("canceled call returned partial weather")
 				}
 				return err
 			}},
 			{name: "observation", provider: "tencent", call: func(ctx context.Context) error {
-				observation, err := weather.GetObservation(ctx, "北京市")
+				observation, err := weather.GetObservation(ctx, "北京, 北京")
 				if observation != (weather.Observation{}) {
 					t.Errorf("canceled call returned observation %#v", observation)
 				}
@@ -62,8 +62,11 @@ func TestPublicContextCancellation(t *testing.T) {
 func TestPublicNilContext(t *testing.T) {
 	calls := []func() error{
 		func() error { _, err := weather.GetMyIPLocationContext(nil); return err },
-		func() error { _, _, _, _, err := weather.GetWeatherByLocationContext(nil, "北京市"); return err },
-		func() error { _, err := weather.GetObservation(nil, "北京市"); return err },
+		func() error {
+			_, _, _, _, err := weather.GetWeatherByLocationContext(nil, "北京, 北京")
+			return err
+		},
+		func() error { _, err := weather.GetObservation(nil, "北京, 北京"); return err },
 	}
 	for _, call := range calls {
 		err := call()

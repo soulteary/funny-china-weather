@@ -116,7 +116,7 @@ func TestProviderContextErrors(t *testing.T) {
 	}{
 		{name: "ipip", call: func(ctx context.Context, client httpDoer) error { _, err := getMyIPLocation(ctx, client); return err }},
 		{name: "tencent", call: func(ctx context.Context, client httpDoer) error {
-			_, _, _, _, err := getWeatherByLocation(ctx, "北京市", client)
+			_, _, _, _, err := getWeatherByLocation(ctx, "北京, 北京", client)
 			return err
 		}},
 	}

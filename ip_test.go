@@ -15,12 +15,12 @@ func TestGetMyIPLocation(t *testing.T) {
 		want      string
 		wantError bool
 	}{
-		{name: "province and city", body: `{"ret":"ok","data":{"location":["中国","浙江","杭州"]}}`, want: "浙江省杭州市"},
-		{name: "Beijing municipality", body: `{"ret":"ok","data":{"location":["中国","北京","北京"]}}`, want: "北京市"},
-		{name: "Shanghai municipality", body: `{"ret":"ok","data":{"location":["中国","上海","上海"]}}`, want: "上海市"},
-		{name: "Chongqing municipality", body: `{"ret":"ok","data":{"location":["中国","重庆","重庆"]}}`, want: "重庆市"},
-		{name: "Tianjin municipality", body: `{"ret":"ok","data":{"location":["中国","天津","天津"]}}`, want: "天津市"},
-		{name: "surrounding whitespace", body: `{"ret":"ok","data":{"location":[" 中国 "," 浙江 "," 杭州 "]}}`, want: "浙江省杭州市"},
+		{name: "province and city", body: `{"ret":"ok","data":{"location":["中国","浙江","杭州"]}}`, want: "浙江, 杭州"},
+		{name: "Beijing municipality", body: `{"ret":"ok","data":{"location":["中国","北京","北京"]}}`, want: "北京, 北京"},
+		{name: "Shanghai municipality", body: `{"ret":"ok","data":{"location":["中国","上海","上海"]}}`, want: "上海, 上海"},
+		{name: "Chongqing municipality", body: `{"ret":"ok","data":{"location":["中国","重庆","重庆"]}}`, want: "重庆, 重庆"},
+		{name: "Tianjin municipality", body: `{"ret":"ok","data":{"location":["中国","天津","天津"]}}`, want: "天津, 天津"},
+		{name: "surrounding whitespace", body: `{"ret":"ok","data":{"location":[" 中国 "," 浙江 "," 杭州 "]}}`, want: "浙江, 杭州"},
 		{name: "missing data", body: `{"ret":"ok"}`, wantError: true},
 		{name: "missing location", body: `{"ret":"ok","data":{}}`, wantError: true},
 		{name: "null location", body: `{"ret":"ok","data":{"location":null}}`, wantError: true},
@@ -36,7 +36,7 @@ func TestGetMyIPLocation(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			got, err := getMyIPLocation(context.Background(), fixtureClient(test.body))
+			got, err := getMyIPLocation(context.Background(), ipFixtureClient(test.body))
 			if (err != nil) != test.wantError {
 				t.Fatalf("getMyIPLocation() error = %v, wantError %v", err, test.wantError)
 			}
@@ -67,7 +67,7 @@ func TestGetMyIPLocationBusinessStatus(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			location, err := getMyIPLocation(context.Background(), fixtureClient(test.body))
+			location, err := getMyIPLocation(context.Background(), ipFixtureClient(test.body))
 			if err == nil || location != "" || !strings.Contains(err.Error(), "ipip: unexpected ret") {
 				t.Fatalf("location/error = %q/%v, want empty location and ret error", location, err)
 			}

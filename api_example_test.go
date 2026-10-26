@@ -17,18 +17,10 @@ func ExampleGetMyIPLocationContext() {
 	// Output: true
 }
 
-func ExampleGetWeatherByLocationContext() {
+func ExampleGetObservationAt_cancellation() {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	_, _, _, _, err := weather.GetWeatherByLocationContext(ctx, "北京市")
-	fmt.Println(errors.Is(err, context.Canceled))
-	// Output: true
-}
-
-func ExampleGetObservation() {
-	ctx, cancel := context.WithCancel(context.Background())
-	cancel()
-	_, err := weather.GetObservation(ctx, "北京市")
+	_, err := weather.GetObservationAt(ctx, weather.Location{Province: "北京", City: "北京"})
 	var detail *weather.Error
 	if errors.As(err, &detail) {
 		fmt.Println(detail.Provider, detail.Stage, errors.Is(err, context.Canceled))
@@ -92,4 +84,35 @@ func ExampleErrResponseTooLarge() {
 	err := &weather.Error{Provider: "tencent", Stage: "size", Err: weather.ErrResponseTooLarge}
 	fmt.Println(errors.Is(err, weather.ErrResponseTooLarge))
 	// Output: true
+}
+
+// Search once, let the caller choose a candidate, then reuse the location.
+// This example is compiled but does not make live requests during normal tests.
+func ExampleSearchLocations() {
+	locations, err := weather.SearchLocations(context.Background(), "朝阳")
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	for _, location := range locations {
+		fmt.Println(location.ID, location.Province, location.City, location.County)
+	}
+}
+
+func ExampleGetObservationAt() {
+	locations, err := weather.SearchLocations(context.Background(), "津市")
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	if len(locations) != 1 {
+		fmt.Println("select a location first")
+		return
+	}
+	observation, err := weather.GetObservationAt(context.Background(), locations[0])
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Println(observation.TemperatureC)
 }

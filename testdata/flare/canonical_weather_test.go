@@ -34,7 +34,7 @@ func TestFlareCanonicalWeatherFlow(t *testing.T) {
 	}
 	for _, value := range codes {
 		code = value
-		result, _, err := consumer.GetWeatherInfo("北京市")
+		result, _, err := consumer.GetWeatherInfo("北京, 北京")
 		if err != nil {
 			t.Fatalf("code %d: %v", code, err)
 		}

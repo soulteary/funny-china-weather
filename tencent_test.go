@@ -30,7 +30,7 @@ func weatherFixture(overrides map[string]string) string {
 }
 
 func TestGetWeatherByLocation(t *testing.T) {
-	code, degree, humidity, updated, err := getWeatherByLocation(context.Background(), "北京市", fixtureClient(weatherFixture(nil)))
+	code, degree, humidity, updated, err := getWeatherByLocation(context.Background(), "北京, 北京", fixtureClient(weatherFixture(nil)))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -41,7 +41,7 @@ func TestGetWeatherByLocation(t *testing.T) {
 
 func TestGetWeatherPreservesUpdateTime(t *testing.T) {
 	want := "upstream-time-unchanged"
-	_, _, _, got, err := getWeatherByLocation(context.Background(), "北京市", fixtureClient(weatherFixture(map[string]string{"update_time": want})))
+	_, _, _, got, err := getWeatherByLocation(context.Background(), "北京, 北京", fixtureClient(weatherFixture(map[string]string{"update_time": want})))
 	if err != nil || got != want {
 		t.Fatalf("update time = %q, error = %v; want %q without an error", got, err, want)
 	}
@@ -54,7 +54,7 @@ func TestGetWeatherRequiredFields(t *testing.T) {
 				continue
 			}
 			t.Run(field+"/"+value, func(t *testing.T) {
-				code, degree, humidity, updated, err := getWeatherByLocation(context.Background(), "北京市", fixtureClient(weatherFixture(map[string]string{field: value})))
+				code, degree, humidity, updated, err := getWeatherByLocation(context.Background(), "北京, 北京", fixtureClient(weatherFixture(map[string]string{field: value})))
 				if err == nil || !strings.Contains(err.Error(), field) {
 					t.Fatalf("error = %v, want an error identifying %s", err, field)
 				}
@@ -69,7 +69,7 @@ func TestGetWeatherRequiredFields(t *testing.T) {
 func TestGetWeatherInvalidPayload(t *testing.T) {
 	for _, body := range []string{`{`, `{}`, `{"data":{}}`, `{"data":{"observe":null}}`, `{"status":200}`, `{"status":200,"data":{"observe":null}}`} {
 		t.Run(body, func(t *testing.T) {
-			_, _, _, _, err := getWeatherByLocation(context.Background(), "北京市", fixtureClient(body))
+			_, _, _, _, err := getWeatherByLocation(context.Background(), "北京, 北京", fixtureClient(body))
 			if err == nil {
 				t.Fatal("expected malformed or incomplete weather data to fail")
 			}
@@ -82,7 +82,7 @@ func TestGetWeatherRejectsInvalidLocationBeforeRequest(t *testing.T) {
 		t.Fatal("invalid location triggered an HTTP request")
 		return nil, nil
 	})}
-	for _, location := range []string{"", "广东省", "invalid"} {
+	for _, location := range []string{"", " ", "深\xff圳", "北京, ", "北京, 北京, ", "a,b,c,d"} {
 		_, _, _, _, err := getWeatherByLocation(context.Background(), location, client)
 		if err == nil {
 			t.Errorf("location %q should fail", location)
@@ -95,7 +95,7 @@ func TestGetWeatherRequestFailure(t *testing.T) {
 	client := &http.Client{Transport: fixtureTransport(func(*http.Request) (*http.Response, error) {
 		return nil, requestError
 	})}
-	_, _, _, _, err := getWeatherByLocation(context.Background(), "北京市", client)
+	_, _, _, _, err := getWeatherByLocation(context.Background(), "北京, 北京", client)
 	if !errors.Is(err, requestError) {
 		t.Fatalf("error = %v, want request error", err)
 	}
@@ -117,7 +117,7 @@ func TestGetWeatherBusinessStatus(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			code, degree, humidity, updated, err := getWeatherByLocation(context.Background(), "北京市", fixtureClient(string(body)))
+			code, degree, humidity, updated, err := getWeatherByLocation(context.Background(), "北京, 北京", fixtureClient(string(body)))
 			if err == nil || !strings.Contains(err.Error(), "tencent: unexpected status") || code != 0 || degree != 0 || humidity != 0 || updated != "" {
 				t.Fatalf("weather = (%d, %d, %d, %q), error = %v; want zero values and status error", code, degree, humidity, updated, err)
 			}
@@ -135,7 +135,7 @@ func TestGetWeatherNumericCauses(t *testing.T) {
 			{name: "overflow", value: strings.Repeat("9", 100), cause: strconv.ErrRange},
 		} {
 			t.Run(field+"/"+test.name, func(t *testing.T) {
-				_, _, _, _, err := getWeatherByLocation(context.Background(), "北京市", fixtureClient(weatherFixture(map[string]string{field: test.value})))
+				_, _, _, _, err := getWeatherByLocation(context.Background(), "北京, 北京", fixtureClient(weatherFixture(map[string]string{field: test.value})))
 				if !errors.Is(err, test.cause) || !strings.Contains(err.Error(), "tencent: invalid "+field) {
 					t.Fatalf("error = %v, want %s and cause %v", err, field, test.cause)
 				}
@@ -160,7 +160,7 @@ func TestGetWeatherHumidityAndUpdateTime(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			_, _, _, updated, err := getWeatherByLocation(context.Background(), "北京市", fixtureClient(weatherFixture(test.fields)))
+			_, _, _, updated, err := getWeatherByLocation(context.Background(), "北京, 北京", fixtureClient(weatherFixture(test.fields)))
 			if (err != nil) != test.wantError {
 				t.Fatalf("error = %v, wantError %v", err, test.wantError)
 			}
@@ -184,7 +184,7 @@ func TestGetWeatherMissingFields(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			_, _, _, _, err = getWeatherByLocation(context.Background(), "北京市", fixtureClient(string(body)))
+			_, _, _, _, err = getWeatherByLocation(context.Background(), "北京, 北京", fixtureClient(string(body)))
 			if err == nil || !strings.Contains(err.Error(), "tencent:") || !strings.Contains(err.Error(), field) {
 				t.Fatalf("error = %v, want missing %s error", err, field)
 			}

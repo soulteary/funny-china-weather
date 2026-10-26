@@ -26,7 +26,7 @@ func TestProviderFailureRetryAndRecovery(t *testing.T) {
 	calls := 0
 	http.DefaultTransport = transportFunc(func(r *http.Request) (*http.Response, error) {
 		calls++
-		if r.URL.Host != "wis.qq.com" || r.URL.Query().Get("province") != "北京市" {
+		if r.URL.Host != "wis.qq.com" || r.URL.Query().Get("province") != "北京" {
 			t.Fatalf("unexpected provider request: %s", r.URL)
 		}
 		body := `{"status":200,"data":{"observe":{"weather_code":"0","degree":"20","humidity":"50","update_time":"202610260800"}}}`
@@ -38,7 +38,7 @@ func TestProviderFailureRetryAndRecovery(t *testing.T) {
 	c := NewCache()
 	at := time.Date(2026, 10, 26, 8, 0, 0, 0, time.FixedZone("UTC+8", 8*3600))
 	c.now = func() time.Time { return at }
-	first := c.Get(context.Background(), "北京市")
+	first := c.Get(context.Background(), "北京, 北京")
 	if !first.Available || first.Stale || first.Observation.TemperatureC != 20 || !strings.Contains(string(first.WeatherIcon), "<svg") {
 		t.Fatalf("initial render: %+v", first)
 	}
@@ -52,12 +52,12 @@ func TestMissingDataLocationIsolationAndConcurrency(t *testing.T) {
 	calls := 0
 	c.fetch = func(_ context.Context, location string) (weather.Observation, error) {
 		calls++
-		if location == "北京市" {
+		if location == "北京, 北京" {
 			return weather.Observation{UpdateTime: "202610260800"}, nil
 		}
 		return weather.Observation{}, context.DeadlineExceeded
 	}
-	c.Get(context.Background(), "北京市")
+	c.Get(context.Background(), "北京, 北京")
 	var wg sync.WaitGroup
 	for i := 0; i < 20; i++ {
 		wg.Add(1)
@@ -83,7 +83,7 @@ func TestObservationFreshness(t *testing.T) {
 			c.fetch = func(context.Context, string) (weather.Observation, error) {
 				return weather.Observation{UpdateTime: raw}, nil
 			}
-			if v := c.Get(context.Background(), "北京市"); !v.Available || !v.Stale {
+			if v := c.Get(context.Background(), "北京, 北京"); !v.Available || !v.Stale {
 				t.Fatalf("untrusted freshness: %+v", v)
 			}
 		})
@@ -96,9 +96,9 @@ func ExampleCache_Get() {
 	c.fetch = func(context.Context, string) (weather.Observation, error) {
 		return weather.Observation{TemperatureC: 20, HumidityPercent: 50, UpdateTime: "202610260800"}, nil
 	}
-	v := c.Get(context.Background(), "北京市")
+	v := c.Get(context.Background(), "北京, 北京")
 	fmt.Printf("%s %d°C available=%t stale=%t\n", v.Location, v.Observation.TemperatureC, v.Available, v.Stale)
-	// Output: 北京市 20°C available=true stale=false
+	// Output: 北京, 北京 20°C available=true stale=false
 }
 
 func TestTemplateStatus(t *testing.T) {
@@ -127,24 +127,24 @@ func TestTemplateStatus(t *testing.T) {
 func checkCacheRetry(t *testing.T, c *Cache, clock *time.Time, count *int, first View) {
 	t.Helper()
 	*clock = clock.Add(10*time.Minute - time.Nanosecond)
-	if v := c.Get(context.Background(), "北京市"); v.Stale || *count != 1 || v.WeatherIcon == first.WeatherIcon {
+	if v := c.Get(context.Background(), "北京, 北京"); v.Stale || *count != 1 || v.WeatherIcon == first.WeatherIcon {
 		t.Fatal("cache must reuse observation but generate isolated SVGs")
 	}
 	*clock = clock.Add(time.Nanosecond)
-	failed := c.Get(context.Background(), "北京市")
+	failed := c.Get(context.Background(), "北京, 北京")
 	var providerError *weather.Error
 	if !failed.Available || !failed.Stale || failed.Observation != first.Observation || !errors.As(failed.LastError, &providerError) || providerError.Stage != "business" {
 		t.Fatalf("failed refresh: %+v", failed)
 	}
 	*clock = clock.Add(time.Minute - time.Nanosecond)
 	for i := 0; i < 20; i++ {
-		c.Get(context.Background(), "北京市")
+		c.Get(context.Background(), "北京, 北京")
 	}
 	if *count != 2 {
 		t.Fatalf("retry storm: %d requests", *count)
 	}
 	*clock = clock.Add(time.Nanosecond)
-	recovered := c.Get(context.Background(), "北京市")
+	recovered := c.Get(context.Background(), "北京, 北京")
 	if *count != 3 || recovered.Stale || recovered.LastError != nil {
 		t.Fatalf("recovery: %+v", recovered)
 	}

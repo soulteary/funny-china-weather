@@ -1,5 +1,19 @@
 # Changelog
 
+## Unreleased
+
+- Resolve weather search keywords through Tencent's `/city/like` directory;
+  remove local province aliases, suffix inference, and Chinese address parsing.
+- Add `Location`, `SearchLocations`, and `GetObservationAt` to preserve provider
+  province/city/county fields and query districts and county-level cities.
+- Reject missing or ambiguous search results with `ErrLocationNotFound` and
+  `ErrAmbiguousLocation` rather than selecting a candidate automatically.
+- Change string weather input to a Tencent search keyword (for example 北京),
+  or the comma-separated address returned by `Location.String()`. Previous
+  concatenated full addresses must migrate; function signatures are unchanged.
+- Resolve IPIP city names through Tencent with exact province matching. IP
+  location strings now use provider fields such as `浙江, 杭州`, without suffixes.
+
 ## v0.3.0
 
 See the [release notes](docs/releases/v0.3.0.md) for migration from v0.2.0.
