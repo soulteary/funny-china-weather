@@ -64,28 +64,33 @@ func TestStructuredErrors(t *testing.T) {
 			if detail.Provider != test.provider || detail.Stage != test.stage || detail.Field != test.field || detail.HTTPStatus != test.httpStatus || detail.BusinessCode != test.code {
 				t.Fatalf("error metadata = %#v", detail)
 			}
-			switch test.stage {
-			case "input":
-				if detail.Err == nil || errors.Unwrap(detail) == nil {
-					t.Fatal("input error lost underlying cause")
-				}
-			case "size":
-				if !errors.Is(err, ErrResponseTooLarge) || !errors.Is(err, errResponseTooLarge) {
-					t.Fatalf("size error lost sentinel: %v", err)
-				}
-			case "field":
-				if test.field == "degree" {
-					var cause *strconv.NumError
-					if !errors.As(err, &cause) || !errors.Is(err, strconv.ErrSyntax) {
-						t.Fatalf("numeric cause lost: %v", err)
-					}
-				}
-			case "decode":
-				var cause *json.SyntaxError
-				if !errors.As(err, &cause) {
-					t.Fatalf("JSON cause lost: %v", err)
-				}
-			}
+			checkErrorCause(t, err, detail, test.stage, test.field)
 		})
+	}
+}
+
+func checkErrorCause(t *testing.T, err error, detail *Error, stage, field string) {
+	t.Helper()
+	switch stage {
+	case "input":
+		if detail.Err == nil || errors.Unwrap(detail) == nil {
+			t.Fatal("input error lost underlying cause")
+		}
+	case "size":
+		if !errors.Is(err, ErrResponseTooLarge) || !errors.Is(err, errResponseTooLarge) {
+			t.Fatalf("size error lost sentinel: %v", err)
+		}
+	case "field":
+		if field == "degree" {
+			var cause *strconv.NumError
+			if !errors.As(err, &cause) || !errors.Is(err, strconv.ErrSyntax) {
+				t.Fatalf("numeric cause lost: %v", err)
+			}
+		}
+	case "decode":
+		var cause *json.SyntaxError
+		if !errors.As(err, &cause) {
+			t.Fatalf("JSON cause lost: %v", err)
+		}
 	}
 }

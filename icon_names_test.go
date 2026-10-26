@@ -36,31 +36,7 @@ func TestCanonicalResourceNames(t *testing.T) {
 			t.Errorf("removed legacy key %q still accepted", old)
 		}
 	}
-	entries, err := iconFiles.ReadDir("icons")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(entries) != len(want) {
-		t.Fatalf("%d assets, want %d", len(entries), len(want))
-	}
-	for _, entry := range entries {
-		key := strings.TrimSuffix(entry.Name(), ".svg")
-		if !want[key] {
-			t.Errorf("unexpected resource %q", key)
-		}
-		if _, ok := GetIconSVG(key); !ok {
-			t.Errorf("missing %q", key)
-		}
-		if _, ok := GetStaticIconSVG(key); !ok {
-			t.Errorf("missing static %q", key)
-		}
-		if _, ok := GetIconSVGWithPrefix(key, "contract"); !ok {
-			t.Errorf("missing fixed-prefix %q", key)
-		}
-		if GetSVGCodeByName(key) == "" {
-			t.Errorf("legacy template API cannot read canonical key %q", key)
-		}
-	}
+	checkCanonicalAssets(t, want)
 }
 
 // Flare passes the selector's opaque key directly to the legacy template API.
@@ -88,6 +64,35 @@ func TestFlareSelectorToLegacySVG(t *testing.T) {
 		clear, _ := GetIconSVGWithPrefix("clear-day", "compare")
 		if unknown == clear {
 			t.Fatal("unknown weather reuses sunny artwork")
+		}
+	}
+}
+
+func checkCanonicalAssets(t *testing.T, want map[string]bool) {
+	t.Helper()
+	entries, err := iconFiles.ReadDir("icons")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != len(want) {
+		t.Fatalf("%d assets, want %d", len(entries), len(want))
+	}
+	for _, entry := range entries {
+		key := strings.TrimSuffix(entry.Name(), ".svg")
+		if !want[key] {
+			t.Errorf("unexpected resource %q", key)
+		}
+		if _, ok := GetIconSVG(key); !ok {
+			t.Errorf("missing %q", key)
+		}
+		if _, ok := GetStaticIconSVG(key); !ok {
+			t.Errorf("missing static %q", key)
+		}
+		if _, ok := GetIconSVGWithPrefix(key, "contract"); !ok {
+			t.Errorf("missing fixed-prefix %q", key)
+		}
+		if GetSVGCodeByName(key) == "" {
+			t.Errorf("legacy template API cannot read canonical key %q", key)
 		}
 	}
 }

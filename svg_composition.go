@@ -37,34 +37,9 @@ func collectSVGNames(source, prefix string) (svgNames, bool) {
 		}
 		switch token := token.(type) {
 		case xml.StartElement:
-			if token.Name.Local == "animate" && len(positions) > 0 {
-				attribute, values := "", ""
-				for _, attr := range token.Attr {
-					if attr.Name.Local == "attributeName" {
-						attribute = attr.Value
-					}
-					if attr.Name.Local == "values" {
-						values = attr.Value
-					}
-				}
-				if attribute == "opacity" {
-					if visible := visibleSVGOpacity(values); visible != "" {
-						names.staticOpacity[positions[len(positions)-1]] = visible
-					}
-				}
-			}
+			names.collectElement(token, prefix, positions)
 			positions = append(positions, position)
 			inStyle = token.Name.Local == "style"
-			for _, attr := range token.Attr {
-				if attr.Name.Local == "id" {
-					names.ids[attr.Value] = prefix + "-" + attr.Value
-				}
-				if attr.Name.Local == "class" {
-					for _, name := range strings.Fields(attr.Value) {
-						names.css[name] = prefix + "-" + name
-					}
-				}
-			}
 		case xml.EndElement:
 			positions = positions[:len(positions)-1]
 			if token.Name.Local == "style" {
@@ -78,6 +53,35 @@ func collectSVGNames(source, prefix string) (svgNames, bool) {
 				for _, match := range svgKeyframeName.FindAllStringSubmatch(string(token), -1) {
 					names.css[match[1]] = prefix + "-" + match[1]
 				}
+			}
+		}
+	}
+}
+
+func (names svgNames) collectElement(token xml.StartElement, prefix string, positions []int64) {
+	if token.Name.Local == "animate" && len(positions) > 0 {
+		attribute, values := "", ""
+		for _, attr := range token.Attr {
+			switch attr.Name.Local {
+			case "attributeName":
+				attribute = attr.Value
+			case "values":
+				values = attr.Value
+			}
+		}
+		if attribute == "opacity" {
+			if visible := visibleSVGOpacity(values); visible != "" {
+				names.staticOpacity[positions[len(positions)-1]] = visible
+			}
+		}
+	}
+	for _, attr := range token.Attr {
+		switch attr.Name.Local {
+		case "id":
+			names.ids[attr.Value] = prefix + "-" + attr.Value
+		case "class":
+			for _, name := range strings.Fields(attr.Value) {
+				names.css[name] = prefix + "-" + name
 			}
 		}
 	}
@@ -104,78 +108,12 @@ func composeIconSVG(source, prefix string, static bool) (string, bool) {
 		raw := source[start:decoder.InputOffset()]
 		switch token := token.(type) {
 		case xml.StartElement:
-			if skipDepth > 0 {
-				skipDepth++
-				continue
-			}
-			if static && isSVGAnimation(token.Name.Local) {
-				skipDepth = 1
+			if skipSVGElement(token.Name.Local, static, &skipDepth) {
 				continue
 			}
 			root := !rootSeen
 			rootSeen = true
-			rootID := prefix
-			for index := range token.Attr {
-				attr := &token.Attr[index]
-				switch attr.Name.Local {
-				case "id":
-					attr.Value = names.ids[attr.Value]
-					if root {
-						rootID = attr.Value
-					}
-				case "class":
-					classes := strings.Fields(attr.Value)
-					for index, class := range classes {
-						classes[index] = names.css[class]
-					}
-					attr.Value = strings.Join(classes, " ")
-				case "href":
-					if replacement, found := names.ids[strings.TrimPrefix(attr.Value, "#")]; found && strings.HasPrefix(attr.Value, "#") {
-						attr.Value = "#" + replacement
-					}
-				case "begin", "end":
-					attr.Value = rewriteSVGTiming(attr.Value, names.ids)
-				case "aria-labelledby", "aria-describedby":
-					fields := strings.Fields(attr.Value)
-					for index, field := range fields {
-						if replacement, found := names.ids[field]; found {
-							fields[index] = replacement
-						}
-					}
-					attr.Value = strings.Join(fields, " ")
-				}
-				attr.Value = rewriteSVGURLs(attr.Value, names.ids)
-				if attr.Name.Local == "style" {
-					attr.Value = rewriteSVGCSS(attr.Value, names, true)
-				}
-			}
-			if static {
-				// Keep precipitation visible when removing opacity animations whose
-				// underlying paths would otherwise remain permanently transparent.
-				if opacity := names.staticOpacity[start]; opacity != "" {
-					found := false
-					for index := range token.Attr {
-						if token.Attr[index].Name.Local == "opacity" {
-							token.Attr[index].Value = opacity
-							found = true
-						}
-					}
-					if !found {
-						token.Attr = append(token.Attr, xml.Attr{Name: xml.Name{Local: "opacity"}, Value: opacity})
-					}
-				}
-			}
-			if root {
-				hasID := false
-				for _, attr := range token.Attr {
-					if attr.Name.Local == "id" {
-						hasID = true
-					}
-				}
-				if !hasID {
-					token.Attr = append(token.Attr, xml.Attr{Name: xml.Name{Local: "id"}, Value: rootID})
-				}
-			}
+			rootID := prepareSVGElement(&token, names, prefix, root, static, start)
 			writeSVGStart(&out, token, strings.HasSuffix(raw, "/>"))
 			inStyle = token.Name.Local == "style"
 			if root && static {
@@ -194,12 +132,7 @@ func composeIconSVG(source, prefix string, static bool) (string, bool) {
 			if skipDepth > 0 {
 				continue
 			}
-			if inStyle {
-				css := rewriteSVGCSS(string(token), names, false)
-				out.WriteString("<![CDATA[" + strings.ReplaceAll(css, "]]>", "]]]]><![CDATA[>") + "]]>")
-			} else {
-				out.WriteString(raw)
-			}
+			writeSVGText(&out, raw, string(token), names, inStyle)
 		default:
 			if skipDepth == 0 {
 				out.WriteString(raw)
@@ -268,42 +201,13 @@ func rewriteSVGCSS(value string, names svgNames, inline bool) string {
 	}
 	for index := 0; index < len(value); {
 		char := value[index]
-		if strings.HasPrefix(value[index:], "/*") {
-			end := strings.Index(value[index+2:], "*/")
-			if end < 0 {
-				out.WriteString(value[index:])
-				break
-			}
-			end += index + 4
-			out.WriteString(value[index:end])
-			index = end
-			continue
-		}
-		if char == '\'' || char == '"' {
-			end := index + 1
-			for end < len(value) {
-				if value[end] == '\\' {
-					end += 2
-					continue
-				}
-				if value[end] == char {
-					end++
-					break
-				}
-				end++
-			}
-			if end > len(value) {
-				end = len(value)
-			}
+		if end := svgCSSLiteralEnd(value, index); end > index {
 			out.WriteString(value[index:end])
 			index = end
 			continue
 		}
 		if char == '#' {
-			end := index + 1
-			for end < len(value) && (asciiLetter(value[end]) || value[end] >= '0' && value[end] <= '9' || value[end] == '_' || value[end] == '-') {
-				end++
-			}
+			end := svgCSSIdentifierEnd(value, index+1)
 			identifier := value[index+1 : end]
 			if replacement, found := names.ids[identifier]; found && depth == 0 {
 				out.WriteByte('#')
@@ -321,10 +225,7 @@ func rewriteSVGCSS(value string, names svgNames, inline bool) string {
 			depth--
 		}
 		if asciiLetter(char) || char == '_' || char == '-' {
-			end := index + 1
-			for end < len(value) && (asciiLetter(value[end]) || value[end] >= '0' && value[end] <= '9' || value[end] == '_' || value[end] == '-') {
-				end++
-			}
+			end := svgCSSIdentifierEnd(value, index+1)
 			identifier := value[index:end]
 			replacement, found := names.css[identifier]
 			if found {
@@ -357,4 +258,124 @@ func visibleSVGOpacity(values string) string {
 		}
 	}
 	return result
+}
+
+func rewriteSVGAttribute(attr *xml.Attr, names svgNames) {
+	switch attr.Name.Local {
+	case "id":
+		attr.Value = names.ids[attr.Value]
+	case "class":
+		classes := strings.Fields(attr.Value)
+		for index, class := range classes {
+			classes[index] = names.css[class]
+		}
+		attr.Value = strings.Join(classes, " ")
+	case "href":
+		if replacement, found := names.ids[strings.TrimPrefix(attr.Value, "#")]; found && strings.HasPrefix(attr.Value, "#") {
+			attr.Value = "#" + replacement
+		}
+	case "begin", "end":
+		attr.Value = rewriteSVGTiming(attr.Value, names.ids)
+	case "aria-labelledby", "aria-describedby":
+		fields := strings.Fields(attr.Value)
+		for index, field := range fields {
+			if replacement, found := names.ids[field]; found {
+				fields[index] = replacement
+			}
+		}
+		attr.Value = strings.Join(fields, " ")
+	}
+	attr.Value = rewriteSVGURLs(attr.Value, names.ids)
+	if attr.Name.Local == "style" {
+		attr.Value = rewriteSVGCSS(attr.Value, names, true)
+	}
+}
+
+func prepareSVGElement(token *xml.StartElement, names svgNames, prefix string, root, static bool, start int64) string {
+	rootID, hasID := prefix, false
+	for index := range token.Attr {
+		rewriteSVGAttribute(&token.Attr[index], names)
+		if token.Attr[index].Name.Local == "id" {
+			rootID, hasID = token.Attr[index].Value, true
+		}
+	}
+	if static {
+		if opacity := names.staticOpacity[start]; opacity != "" {
+			setSVGOpacity(token, opacity)
+		}
+	}
+	if root && !hasID {
+		token.Attr = append(token.Attr, xml.Attr{Name: xml.Name{Local: "id"}, Value: rootID})
+	}
+	return rootID
+}
+
+// Preserve visible precipitation when its opacity animation is removed.
+func setSVGOpacity(token *xml.StartElement, opacity string) {
+	for index := range token.Attr {
+		if token.Attr[index].Name.Local == "opacity" {
+			token.Attr[index].Value = opacity
+			return
+		}
+	}
+	token.Attr = append(token.Attr, xml.Attr{Name: xml.Name{Local: "opacity"}, Value: opacity})
+}
+
+// Return the end of a comment or quoted string, leaving CSS literals untouched.
+func svgCSSLiteralEnd(value string, index int) int {
+	if strings.HasPrefix(value[index:], "/*") {
+		end := strings.Index(value[index+2:], "*/")
+		if end < 0 {
+			return len(value)
+		}
+		return index + end + 4
+	}
+	char := value[index]
+	if char != '\'' && char != '"' {
+		return index
+	}
+	end := index + 1
+	for end < len(value) {
+		if value[end] == '\\' {
+			end += 2
+			continue
+		}
+		if value[end] == char {
+			return end + 1
+		}
+		end++
+	}
+	return len(value)
+}
+
+func svgCSSIdentifierEnd(value string, index int) int {
+	for index < len(value) && svgCSSIdentifierByte(value[index]) {
+		index++
+	}
+	return index
+}
+
+func svgCSSIdentifierByte(char byte) bool {
+	return asciiLetter(char) || char >= '0' && char <= '9' || char == '_' || char == '-'
+}
+
+func writeSVGText(out *strings.Builder, raw, value string, names svgNames, inStyle bool) {
+	if inStyle {
+		css := rewriteSVGCSS(value, names, false)
+		out.WriteString("<![CDATA[" + strings.ReplaceAll(css, "]]>", "]]]]><![CDATA[>") + "]]>")
+	} else {
+		out.WriteString(raw)
+	}
+}
+
+func skipSVGElement(name string, static bool, depth *int) bool {
+	if *depth > 0 {
+		(*depth)++
+		return true
+	}
+	if static && isSVGAnimation(name) {
+		*depth = 1
+		return true
+	}
+	return false
 }

@@ -38,22 +38,7 @@ var manualDescriptions = map[string]string{
 }
 
 func buildIcons(directory string) ([]icon, error) {
-	// Derive automatic usage from the public selector, rather than duplicating
-	// its mapping. Include unknown fallback and the extended supported codes.
-	usage := map[string]map[int]string{}
-	codes := []int{-1, 53, 301, 302}
-	for code := 0; code <= 32; code++ {
-		codes = append(codes, code)
-	}
-	for _, code := range codes {
-		for _, hour := range []int{0, 12} {
-			key, label := weather.GetWeatherIconAt(code, time.Date(2026, 10, 26, hour, 0, 0, 0, time.UTC))
-			if usage[key] == nil {
-				usage[key] = map[int]string{}
-			}
-			usage[key][code] = label
-		}
-	}
+	usage := automaticIconUsage()
 	entries, err := os.ReadDir(directory)
 	if err != nil {
 		return nil, err
@@ -63,54 +48,9 @@ func buildIcons(directory string) ([]icon, error) {
 		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".svg") {
 			continue
 		}
-		key := strings.TrimSuffix(entry.Name(), ".svg")
-		svg, ok := weather.GetIconSVGWithPrefix(key, "preview-"+key)
-		if !ok {
-			return nil, fmt.Errorf("resource %q is not embedded", key)
-		}
-		static, ok := weather.GetStaticIconSVG(key)
-		if !ok {
-			return nil, fmt.Errorf("static resource %q is not embedded", key)
-		}
-		item := icon{Key: key, Animated: template.HTML(svg), Static: template.HTML(static), Period: "全天 / 通用"}
-		if strings.Contains(key, "-day") {
-			item.Period = "白天"
-		}
-		if strings.Contains(key, "-night") {
-			item.Period = "夜间"
-		}
-		if strings.Contains(svg, "<animate") || strings.Contains(svg, "animation:") || strings.Contains(svg, "animation-name:") {
-			item.Animation = "含动画"
-		} else {
-			item.Animation = "静态图形"
-		}
-		if matches := usage[key]; matches != nil {
-			item.Automatic = true
-			var numbers []int
-			for code := range matches {
-				numbers = append(numbers, code)
-			}
-			sort.Ints(numbers)
-			var labels, values []string
-			seen := map[string]bool{}
-			for _, code := range numbers {
-				values = append(values, fmt.Sprint(code))
-				if !seen[matches[code]] {
-					labels = append(labels, matches[code])
-					seen[matches[code]] = true
-				}
-			}
-			item.Description = strings.Join(labels, "、")
-			item.Codes = strings.Join(values, ", ")
-			if key == "unknown" {
-				item.Codes = "未识别代码（包括 -1）"
-			}
-		} else {
-			item.Description = manualDescriptions[key]
-			if item.Description == "" {
-				return nil, fmt.Errorf("missing description for %q", key)
-			}
-			item.Codes = "无自动映射"
+		item, err := buildIcon(strings.TrimSuffix(entry.Name(), ".svg"), usage)
+		if err != nil {
+			return nil, err
 		}
 		result = append(result, item)
 	}
@@ -167,4 +107,79 @@ func main() {
 		os.Exit(1)
 	}
 	fmt.Println("Generated", *output)
+}
+
+func automaticIconUsage() map[string]map[int]string {
+	// Derive automatic usage from the public selector, rather than duplicating
+	// its mapping. Include unknown fallback and the extended supported codes.
+	usage := map[string]map[int]string{}
+	codes := []int{-1, 53, 301, 302}
+	for code := 0; code <= 32; code++ {
+		codes = append(codes, code)
+	}
+	for _, code := range codes {
+		for _, hour := range []int{0, 12} {
+			key, label := weather.GetWeatherIconAt(code, time.Date(2026, 10, 26, hour, 0, 0, 0, time.UTC))
+			if usage[key] == nil {
+				usage[key] = map[int]string{}
+			}
+			usage[key][code] = label
+		}
+	}
+	return usage
+}
+
+func buildIcon(key string, usage map[string]map[int]string) (icon, error) {
+	svg, ok := weather.GetIconSVGWithPrefix(key, "preview-"+key)
+	if !ok {
+		return icon{}, fmt.Errorf("resource %q is not embedded", key)
+	}
+	static, ok := weather.GetStaticIconSVG(key)
+	if !ok {
+		return icon{}, fmt.Errorf("static resource %q is not embedded", key)
+	}
+	item := icon{Key: key, Animated: template.HTML(svg), Static: template.HTML(static), Period: "全天 / 通用"}
+	if strings.Contains(key, "-day") {
+		item.Period = "白天"
+	}
+	if strings.Contains(key, "-night") {
+		item.Period = "夜间"
+	}
+	if strings.Contains(svg, "<animate") || strings.Contains(svg, "animation:") || strings.Contains(svg, "animation-name:") {
+		item.Animation = "含动画"
+	} else {
+		item.Animation = "静态图形"
+	}
+	if matches := usage[key]; matches != nil {
+		item.Automatic = true
+		item.Description, item.Codes = describeIconUsage(matches)
+		if key == "unknown" {
+			item.Codes = "未识别代码（包括 -1）"
+		}
+	} else {
+		item.Description = manualDescriptions[key]
+		if item.Description == "" {
+			return icon{}, fmt.Errorf("missing description for %q", key)
+		}
+		item.Codes = "无自动映射"
+	}
+	return item, nil
+}
+
+func describeIconUsage(matches map[int]string) (string, string) {
+	var numbers []int
+	for code := range matches {
+		numbers = append(numbers, code)
+	}
+	sort.Ints(numbers)
+	var labels, values []string
+	seen := map[string]bool{}
+	for _, code := range numbers {
+		values = append(values, fmt.Sprint(code))
+		if !seen[matches[code]] {
+			labels = append(labels, matches[code])
+			seen[matches[code]] = true
+		}
+	}
+	return strings.Join(labels, "、"), strings.Join(values, ", ")
 }

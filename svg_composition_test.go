@@ -46,40 +46,7 @@ func inspectSVG(t *testing.T, source string) svgInspection {
 				result.animationCount++
 			}
 			inStyle = token.Name.Local == "style"
-			for _, attr := range token.Attr {
-				switch attr.Name.Local {
-				case "id":
-					if result.ids[attr.Value] {
-						t.Errorf("duplicate ID %q within an icon", attr.Value)
-					}
-					result.ids[attr.Value] = true
-				case "class":
-					for _, value := range strings.Fields(attr.Value) {
-						result.classes[value] = true
-					}
-				case "href":
-					if strings.HasPrefix(attr.Value, "#") {
-						result.references = append(result.references, strings.TrimPrefix(attr.Value, "#"))
-					}
-				case "begin", "end":
-					for _, part := range strings.Split(attr.Value, ";") {
-						part = strings.TrimSpace(part)
-						if dot := strings.IndexByte(part, '.'); dot > 0 {
-							id := part[:dot]
-							if asciiLetter(id[0]) {
-								result.references = append(result.references, id)
-							}
-						}
-					}
-				case "fill", "stroke", "stop-color":
-					if strings.HasPrefix(attr.Value, "#") {
-						result.colors = append(result.colors, attr.Value)
-					}
-				}
-				for _, match := range svgURLReference.FindAllStringSubmatch(attr.Value, -1) {
-					result.references = append(result.references, match[1])
-				}
-			}
+			result.inspectAttributes(t, token.Attr)
 		case xml.EndElement:
 			if token.Name.Local == "style" {
 				inStyle = false
@@ -123,11 +90,7 @@ func TestSVGCompositionAllAssets(t *testing.T) {
 				t.Fatalf("missing icon %s", key)
 			}
 			got := inspectSVG(t, svg)
-			for _, match := range svgClassName.FindAllStringSubmatch(got.styles, -1) {
-				if !strings.HasPrefix(match[1], "fcw-auto-") {
-					t.Errorf("%s unscoped CSS class selector %q", key, match[1])
-				}
-			}
+			checkScopedSVGClasses(t, key, got.styles)
 			if fmt.Sprint(got.colors) != fmt.Sprint(original.colors) {
 				t.Errorf("%s colors changed", key)
 			}
@@ -140,19 +103,7 @@ func TestSVGCompositionAllAssets(t *testing.T) {
 			if len(got.ids) != len(original.ids)+1 {
 				t.Errorf("%s IDs = %d, want %d source IDs plus root", key, len(got.ids), len(original.ids))
 			}
-			for _, attr := range got.root.Attr {
-				if attr.Name.Local == "viewBox" {
-					fields := strings.Fields(attr.Value)
-					if len(fields) != 4 {
-						t.Fatalf("%s invalid viewBox %q", key, attr.Value)
-					}
-					for _, field := range fields {
-						if _, err := strconv.ParseFloat(field, 64); err != nil {
-							t.Errorf("%s invalid viewBox coordinate %q", key, field)
-						}
-					}
-				}
-			}
+			checkSVGViewBox(t, key, got.root)
 			for _, pair := range []struct {
 				name          string
 				local, global map[string]bool
@@ -182,20 +133,7 @@ func TestGetIconSVGWithPrefix(t *testing.T) {
 	if _, ok := GetIconSVGWithPrefix("clear-day", strings.Repeat("a", 64)); !ok {
 		t.Fatal("rejected 64-character prefix")
 	}
-	for _, prefix := range []string{"Card", "Card-blur", "auto-1"} {
-		svg, ok := GetIconSVGWithPrefix("clear-day", prefix)
-		if !ok {
-			t.Fatal("valid prefix rejected")
-		}
-		fixed := inspectSVG(t, svg)
-		dynamic, _ := GetIconSVG("clear-day")
-		automatic := inspectSVG(t, dynamic)
-		for id := range fixed.ids {
-			if automatic.ids[id] {
-				t.Errorf("custom and automatic ID namespaces overlap: %s", id)
-			}
-		}
-	}
+	checkCustomSVGNamespaces(t)
 	for _, key := range []string{"missing", "day.svg", "../day"} {
 		if svg, ok := GetIconSVGWithPrefix(key, "card"); ok || svg != "" {
 			t.Errorf("accepted invalid key %q", key)
@@ -344,6 +282,92 @@ func TestSVGInstancesAcrossProcesses(t *testing.T) {
 	for id := range parentIDs {
 		if childIDs[id] {
 			t.Errorf("separate processes reused SVG ID %q", id)
+		}
+	}
+}
+
+func (result *svgInspection) inspectAttributes(t *testing.T, attrs []xml.Attr) {
+	t.Helper()
+	for _, attr := range attrs {
+		switch attr.Name.Local {
+		case "id":
+			if result.ids[attr.Value] {
+				t.Errorf("duplicate ID %q within an icon", attr.Value)
+			}
+			result.ids[attr.Value] = true
+		case "class":
+			for _, value := range strings.Fields(attr.Value) {
+				result.classes[value] = true
+			}
+		case "href":
+			if strings.HasPrefix(attr.Value, "#") {
+				result.references = append(result.references, strings.TrimPrefix(attr.Value, "#"))
+			}
+		case "begin", "end":
+			result.inspectTiming(attr.Value)
+		case "fill", "stroke", "stop-color":
+			if strings.HasPrefix(attr.Value, "#") {
+				result.colors = append(result.colors, attr.Value)
+			}
+		}
+		for _, match := range svgURLReference.FindAllStringSubmatch(attr.Value, -1) {
+			result.references = append(result.references, match[1])
+		}
+	}
+}
+
+func (result *svgInspection) inspectTiming(value string) {
+	for _, part := range strings.Split(value, ";") {
+		part = strings.TrimSpace(part)
+		if dot := strings.IndexByte(part, '.'); dot > 0 {
+			id := part[:dot]
+			if asciiLetter(id[0]) {
+				result.references = append(result.references, id)
+			}
+		}
+	}
+}
+
+func checkSVGViewBox(t *testing.T, key string, root xml.StartElement) {
+	t.Helper()
+	for _, attr := range root.Attr {
+		if attr.Name.Local == "viewBox" {
+			fields := strings.Fields(attr.Value)
+			if len(fields) != 4 {
+				t.Fatalf("%s invalid viewBox %q", key, attr.Value)
+			}
+			for _, field := range fields {
+				if _, err := strconv.ParseFloat(field, 64); err != nil {
+					t.Errorf("%s invalid viewBox coordinate %q", key, field)
+				}
+			}
+		}
+	}
+}
+
+func checkCustomSVGNamespaces(t *testing.T) {
+	t.Helper()
+	for _, prefix := range []string{"Card", "Card-blur", "auto-1"} {
+		svg, ok := GetIconSVGWithPrefix("clear-day", prefix)
+		if !ok {
+			t.Fatal("valid prefix rejected")
+		}
+		fixed := inspectSVG(t, svg)
+		dynamic, _ := GetIconSVG("clear-day")
+		automatic := inspectSVG(t, dynamic)
+		for id := range fixed.ids {
+			if automatic.ids[id] {
+				t.Errorf("custom and automatic ID namespaces overlap: %s", id)
+			}
+		}
+	}
+}
+
+func checkScopedSVGClasses(t *testing.T, key, styles string) {
+	t.Helper()
+	for _, match := range svgClassName.FindAllStringSubmatch(styles, -1) {
+		if !strings.HasPrefix(match[1], "fcw-auto-") {
+			t.Errorf("%s unscoped CSS class selector %q", key, match[1])
 		}
 	}
 }
