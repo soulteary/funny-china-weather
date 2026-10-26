@@ -172,7 +172,7 @@ Each call isolates SVG IDs, references, CSS classes, and animation names with a 
 
 - **Stable output:** use `GetIconSVGWithPrefix(key, prefix)`. Prefixes must start with an ASCII letter, contain only ASCII letters, digits, `_`, or `-`, and be at most 64 characters. Invalid prefixes return `"", false`.
 - **Static output:** use `GetStaticIconSVG(key)` to remove SMIL animations and disable CSS animations. Applications can select it for users who prefer reduced motion.
-- **Caching:** use a unique prefix for each DOM slot and include both the key and slot prefix in the cache key. Reusing one final SVG string in multiple positions duplicates IDs. A fixed prefix provides stable output; it does not automatically cache parsing.
+- **Caching:** use a unique prefix for each DOM slot and include both the key and slot prefix in the cache key. Reusing one final SVG string in multiple positions duplicates IDs. Animated and static templates are compiled lazily per icon and reused; each render still applies its instance prefix. A fixed prefix provides stable output.
 
 Weather descriptions follow the [China Weather legend](https://www.weather.com.cn/pub/legend.shtml), including extended codes `53` (haze), `301` (rain), and `302` (snow). Extensions `49` and `54–58` follow the [Huafeng WeatherCode table](https://apidoc.weathercn.com/developers/best-practices.html). Fog, haze, sandstorms, rainstorms and snowstorms have distinct artwork; precipitation ranges still share intensity icons. Keep the returned description rather than inferring precise conditions from the icon alone.
 
