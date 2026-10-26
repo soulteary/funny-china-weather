@@ -1,47 +1,37 @@
 # funny-china-weather
 
-[![Go Report Card](./.github/goreportcard.svg)](./.github/goreportcard-report.md) [![Coverage](./.github/coverage.svg)](./.github/go-test-report.md)
+**简体中文** | [English](README.en.md)
 
-A small Go library for current weather in China and animated SVG weather icons.
-It can locate the outgoing IP address, fetch Tencent observations for a province
-and city, and select an embedded icon by weather code.
+[![Go Report Card](.github/goreportcard.svg)](.github/goreportcard-report.md) [![Coverage](.github/coverage.svg)](.github/go-test-report.md)
 
-[![Complete offline gallery of all 34 SVG weather icons, including day and night variants, resource details, and preview controls](docs/icon-preview.png)](docs/icon-preview.html)
+一个轻量的 Go 天气库：查询中国境内城市的实时天气，根据出口 IP 定位，并按天气代码选择可直接嵌入页面的 SVG 图标。适合个人主页、仪表盘和 Flare 等应用。
 
-Eight animated examples (GIF, approximately 252 KB); click to open the full gallery.
+- 内置 **34 个 SVG 图标**，支持昼夜切换、动画和静态版本。
+- 提供温度、湿度、天气描述和上游更新时间，支持通过 `context` 取消请求。
+- 仅依赖 Go 标准库。天气查询和 IP 定位需要联网；图标选择与 SVG 读取可离线使用。
 
-[![Animated SVG weather icons: clear day, clear night, cloudy day, showers, heavy snow, thunderstorm, fog, and wind](docs/icon-preview-animated.gif)](docs/icon-preview.html)
+## 图标预览
 
-v0.3.0 uses explicit icon resource names without aliases for old keys. See the
-[icon naming and migration guide](docs/icon-names.md) when upgrading from v0.2.0.
-Flare's selector-to-SVG calls retain their signatures; restart after upgrading
-to clear old cached keys.
+下面展示晴天、晴夜、多云、阵雨、大雪、雷雨、雾和风的动画效果。动图约 **252 KB**；下载仓库后，可在浏览器中打开 [完整交互画廊](docs/icon-preview.html)，搜索图标、切换浅色/深色画布，或查看静态版本。
 
-## Requirements and installation
+[![8 种代表天气的 SVG 动画效果](docs/icon-preview-animated.gif)](docs/icon-preview.html)
 
-Go 1.27.3 or later is required. Development and CI use Go 1.27.3.
+<details>
+<summary>查看全部 34 个图标的静态总览</summary>
 
-Install v0.3.0:
+[![全部 34 个 SVG 天气图标，包含名称、天气说明和自动匹配状态](docs/icon-preview.png)](docs/icon-preview.html)
+
+</details>
+
+## 安装与快速开始
+
+需要 **Go 1.27.3 或更高版本**。
 
 ```sh
 go get github.com/soulteary/funny-china-weather@v0.3.0
 ```
 
-Import the module with the package name `weather`:
-
-```go
-import weather "github.com/soulteary/funny-china-weather"
-```
-
-`@main` selects development code; merging changes does not publish a version.
-See the [v0.3.0 release notes](docs/releases/v0.3.0.md) for the resource-name
-migration and [release steps](docs/releasing.md) for publication and proxy checks.
-
-The library includes its SVG assets and has no runtime dependencies outside the
-Go standard library. Location and observation requests require network access;
-icon selection and SVG lookup work offline.
-
-## Fetch current weather
+查询北京天气，并取得对应图标的名称：
 
 ```go
 package main
@@ -64,15 +54,32 @@ func main() {
 }
 ```
 
-`GetWeatherByLocation` returns the upstream weather code, temperature in degrees
-Celsius, relative humidity as an integer percentage, and the original
-`update_time` string. The provider currently supplies a timestamp such as
-`202610250745` (`YYYYMMDDHHMM`). The library preserves it exactly and does not
-parse it or convert its time zone automatically. Unknown integer weather codes
-remain valid observation data.
+返回值依次为天气代码、摄氏温度、相对湿度（整数百分比）和上游原始更新时间。时间字符串通常形如 `202610250745`（`YYYYMMDDHHMM`）；查询接口保留原值，不自动解析或转换时区。未识别的整数天气代码仍是有效观测数据，图标会使用 `unknown` 兜底。
 
-For cancellation and the provider's original descriptions, use the structured
-API:
+从 v0.2.0 升级时，请先阅读 [图标命名与迁移说明](docs/icon-names.md)。v0.3.0 移除了旧图标名称，未提供别名；直接传递选择器结果的调用方式保持兼容。Flare 升级后应重启以清除旧缓存。
+
+## 查询天气
+
+### 支持的地址
+
+直辖市可以直接使用 `北京市`、`上海市`、`天津市`、`重庆市`；其他地区使用“省或自治区 + 城市”格式，例如：
+
+- `浙江省杭州市`
+- `广西壮族自治区南宁市`
+- `内蒙古自治区呼和浩特市`
+- `宁夏回族自治区银川市`
+- `西藏自治区拉萨市`
+- `新疆维吾尔自治区乌鲁木齐市`
+
+会去除首尾空白，并规范化已知简称：`北京` → `北京市`，`广西南宁市` → `广西壮族自治区南宁市`。`广西省` 等历史写法也可识别，新代码建议使用现行名称。省份后需要完整的市、自治州、地区或盟名称，分别以 `市`、`自治州`、`地区`、`盟` 结尾。
+
+不支持仅有区县的地址、经纬度和境外地址。重复的行政层级、直辖市名称不匹配、无效 UTF-8 和不可见格式字符会被拒绝。地址校验通过不代表腾讯一定提供该地区的天气数据。
+
+`湖南省津市市` 等真实地名可正常使用。IP 定位还识别 `大兴安岭`、`阿拉善`、`锡林郭勒` 的已知简称；这些规则只是少量别名，并非完整行政区划数据库。
+
+### 使用 context 与结构化结果
+
+需要超时控制或上游天气描述时，使用 `GetObservation`。以下片段放在返回 `error` 的函数中，并添加 `context`、`time` 和 `fmt` 导入：
 
 ```go
 ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
@@ -91,44 +98,14 @@ if err != nil {
 fmt.Println("stale:", stale)
 ```
 
-Add `context` and `time` imports. `ParseUpdateTime` explicitly parses a strict
-12-digit `YYYYMMDDHHMM` timestamp in UTC+8. `Observation.Age(at)` returns its age;
-`IsStale(at, maxAge)` compares it with a caller-chosen positive limit. Parsing
-rejects malformed timestamps and invalid calendar dates; `Age` and `IsStale`
-also reject timestamps after the supplied reference time. Fetching an
-observation still preserves any nonblank upstream timestamp. Age equal to the
-limit is not stale. The library does not impose a default freshness policy.
+`Description` 和 `ShortDescription` 保留上游描述。是否过期由调用方决定：
 
-The supported address forms include province-and-city names such as
-`浙江省杭州市`, the four municipalities (`北京市`, `上海市`, `天津市`, and
-`重庆市`), and autonomous regions with their city names. Examples for the five
-autonomous regions are:
+- `ParseUpdateTime` 按 UTC+8 严格解析 12 位时间，拒绝非法日期。
+- `Observation.Age(at)` 计算观测距参考时间的时长；`IsStale(at, maxAge)` 要求正数有效期。
+- 观测时间晚于参考时间时返回错误；恰好达到有效期时仍未过期。
+- 查询接口只要求更新时间非空；如需检查格式和新鲜度，应显式调用这些方法。
 
-- `广西壮族自治区南宁市`
-- `内蒙古自治区呼和浩特市`
-- `宁夏回族自治区银川市`
-- `西藏自治区拉萨市`
-- `新疆维吾尔自治区乌鲁木齐市`
-
-Surrounding whitespace and known short province or region names are normalized.
-For example, `广西南宁市` resolves to `广西壮族自治区南宁市`, and `北京`
-resolves to `北京市`. Legacy region names such as `广西省` are also accepted;
-prefer the current official names in new code. A province must be followed by a
-full city, autonomous-prefecture, prefecture, or league name ending in `市`,
-`自治州`, `地区`, or `盟`. The municipality names stand alone.
-
-District-only addresses, coordinates, and foreign locations are outside this
-API's scope. Local address validation does not establish whether Tencent has
-observations for every city.
-
-Repeated administrative levels, mismatched municipality names, invalid UTF-8,
-and invisible format characters are rejected. Legitimate names such as
-`湖南省津市市` remain valid. The IP location normalizer explicitly recognizes
-short forms for `黑龙江省大兴安岭地区`, `内蒙古自治区阿拉善盟`, and
-`内蒙古自治区锡林郭勒盟`.
-This is a small set of aliases, not a complete administrative-division database.
-
-## Locate the outgoing IP address
+### 根据出口 IP 定位
 
 ```go
 location, err := weather.GetMyIPLocation()
@@ -138,17 +115,11 @@ if err != nil {
 code, degree, humidity, updated, err := weather.GetWeatherByLocation(location)
 ```
 
-`GetMyIPLocation` looks up the IP address seen by IPIP. It reflects the outgoing
-connection, including any proxy or VPN, rather than a device's GPS position.
-The returned Chinese location uses normalized administrative names so it can be
-passed directly to `GetWeatherByLocation`. Missing country, province, or city
-information and locations outside China return an error.
+`GetMyIPLocation` 返回出口 IP 对应的规范化中文地址，可直接传给天气查询接口。它反映代理或 VPN 等出口连接的位置。国家、省份或城市缺失，以及境外地址，都会返回错误。
 
-`GetMyIPLocationContext(ctx)` and `GetWeatherByLocationContext(ctx, location)`
-accept caller cancellation while returning the same values as their original
-counterparts.
+需要取消请求时，使用 `GetMyIPLocationContext(ctx)` 和 `GetWeatherByLocationContext(ctx, location)`；返回值与原接口一致。
 
-## Select an icon and read its SVG
+## 使用 SVG 图标
 
 ```go
 key, description := weather.GetWeatherIconByCode(3)
@@ -159,14 +130,9 @@ if !ok {
 fmt.Println(description, len(svg))
 ```
 
-`GetWeatherIconByCode` uses the current local time of the process. Daytime starts
-at **05:00 inclusive** and ends at **19:00 exclusive**. Sunny, cloudy, shower,
-rain-and-snow, and snow-shower codes have separate day and night icons. Other
-supported codes use the same icon throughout the day. Unknown codes, including
-`-1`, return the key `unknown` and the description `未知`.
+`GetWeatherIconByCode` 按进程当前本地时间区分昼夜：**05:00（含）至 19:00（不含）为白天**。晴、多云、阵雨、雨夹雪和阵雪有昼夜版本，其他天气全天共用图标。未知代码（包括 `-1`）返回 `unknown` 和描述 `未知`。
 
-Use `GetWeatherIconAt` when a stored timestamp or a particular time zone should
-determine the icon:
+如需指定时间和时区，使用 `GetWeatherIconAt`，并导入 `time`：
 
 ```go
 chinaTime := time.FixedZone("UTC+8", 8*60*60)
@@ -175,50 +141,31 @@ key, description := weather.GetWeatherIconAt(3, at)
 // key is "showers-night"; description is "夜间阵雨".
 ```
 
-Add `import "time"` for this example. `GetWeatherIconAt` uses the hour in the
-supplied `time.Time` location and does not convert it to another time zone. The
-upstream update string does not determine icon selection automatically.
+该接口使用传入时间所属时区的小时，不额外转换时区。上游更新时间不会自动参与图标选择。
 
-`GetIconSVG` returns a complete SVG string for an exact icon key, such as
-`cloudy-day`. It returns `"", false` for unknown keys, paths, or filenames with
-an extension such as `cloudy-day.svg`. All 34 source SVG assets are embedded in
-the library; no asset-generation step or external icon files are needed.
+### 图标名称与页面内联
 
-Every SVG returned by `GetIconSVG` receives a unique instance prefix for its
-IDs, references, classes, and animations. Different icons and repeated copies
-can be inserted inline into the same HTML document. The source assets have
-valid `viewBox` attributes, so changing the root width and height scales their
-content. Output bytes can differ between calls.
+`GetIconSVG` 接受精确的图标名，例如 `cloudy-day`，返回完整 SVG 字符串。不接受路径或 `.svg` 扩展名；名称无效或不存在时返回 `"", false`。全部 34 个资源均已嵌入，无需额外生成或部署图标文件。
 
-For visual inspection, open the offline [complete SVG gallery](docs/icon-preview.html).
-It labels every resource's name, weather conditions and automatic matching
-status, with light/dark canvases and animation/static controls. Regenerate it
-with `go run ./examples/icon-preview` after resource changes; see the
-[gallery instructions](examples/icon-preview/README.md).
+每次调用都会为 SVG 的 ID、引用、CSS 类和动画名称生成独立前缀，方便在同一页面内联多个图标。源文件具有有效的 `viewBox`，可通过根元素尺寸缩放。同一图标的不同调用可能返回不同字节内容。
 
-Use `GetIconSVGWithPrefix(key, prefix)` for stable output, for example when
-caching or rendering on a server. Prefixes must begin with an ASCII letter,
-contain only ASCII letters, digits, `_`, or `-`, and be at most 64 characters.
-Use a unique prefix for every inline instance in a document. Invalid prefixes
-return `"", false`. `GetStaticIconSVG(key)` provides an instance-isolated SVG
-with SMIL and CSS animation disabled for applications that prefer reduced
-motion. Applications should choose the static variant based on their own
-accessibility preferences.
+- **需要稳定输出**：使用 `GetIconSVGWithPrefix(key, prefix)`。前缀以 ASCII 字母开头，最长 64 个字符，其余只能是 ASCII 字母、数字、`_` 或 `-`。无效前缀返回 `"", false`。
+- **需要静态图标**：使用 `GetStaticIconSVG(key)`，移除 SMIL 动画并禁用 CSS 动画。应用可根据用户的减少动态效果偏好选择静态版本。
+- **需要缓存 SVG**：每个页面插槽使用独立前缀，并将图标名称与插槽前缀都纳入缓存键。同一段最终 SVG 不应复制到多个位置，否则内部 ID 会重复。固定前缀只保证输出稳定，不会自动缓存解析结果。
 
-When caching inline SVGs, include both the icon key and a unique DOM-slot prefix
-in the cache key. Copying one final SVG string into several positions duplicates
-its IDs, even when that string originally came from `GetIconSVG`. Generate each
-instance separately or use `GetIconSVGWithPrefix` with distinct slot prefixes.
-Avoid depending on the bundled assets' internal IDs or CSS class names. A fixed
-prefix makes output stable; it does not cache the parsing work automatically.
+天气文字说明参考 [中国天气图例](https://www.weather.com.cn/pub/legend.shtml)，支持扩展代码 `53`（霾）、`301`（雨）、`302`（雪）。不同强度的降雨、雾与霾等可能共用图案，请保留返回的天气描述，不要仅凭图标推断精确天气。
 
-Weather descriptions follow the [China Weather legend](https://www.weather.com.cn/pub/legend.shtml),
-including thunderstorm with hail, freezing rain, intensity ranges, and extended
-codes `53` (haze), `301` (rain), and `302` (snow). An icon can approximate a
-condition when the bundled set lacks an exact visual; the description retains
-the condition's meaning.
+完整名称和代码映射见 [图标命名说明](docs/icon-names.md)。重新生成离线画廊：
 
-The original public functions retain their signatures:
+```sh
+go run ./examples/icon-preview
+```
+
+更多控制和生成选项见 [画廊使用说明](examples/icon-preview/README.md)。
+
+## API 与兼容性
+
+保留的原有函数：
 
 ```go
 func GetMyIPLocation() (string, error)
@@ -227,7 +174,7 @@ func GetWeatherIconByCode(weatherCode int) (string, string)
 func GetSVGCodeByName(name string) template.HTML
 ```
 
-The additional functions are:
+补充接口：
 
 ```go
 func GetWeatherIconAt(code int, at time.Time) (key, name string)
@@ -240,45 +187,25 @@ func GetObservation(ctx context.Context, location string) (Observation, error)
 func ParseUpdateTime(raw string) (time.Time, error)
 ```
 
-`GetSVGCodeByName` is retained for callers of the published `v0.1.1` API and is
-deprecated in favor of `GetIconSVG`. It returns only trusted bundled markup as
-`html/template.HTML`, and returns an empty value for unknown names. Existing
-function signatures are preserved; corrected weather descriptions and the
-Go 1.27.3 minimum are intentional changes. See [the changelog](CHANGELOG.md).
+`Observation` 还提供 `Age` 和 `IsStale` 方法。`GetSVGCodeByName` 为 v0.1.1 调用方保留，返回可用于 `html/template` 的可信内置 SVG；未知名称返回空值。新代码建议使用 `GetIconSVG`。
 
-## Network behavior and errors
+函数签名兼容不等于图标名称兼容。旧名称的迁移见 [v0.3.0 发布说明](docs/releases/v0.3.0.md) 和 [变更记录](CHANGELOG.md)。`@main` 获取开发代码；合并代码不会自动发布版本。发布流程见 [发布指南](docs/releasing.md)。
 
-The library calls IPIP's `https://myip.ipip.net/json` and Tencent's
-`https://wis.qq.com/weather/common` observation endpoint. Their availability,
-response format, and city coverage are controlled by those services. Successful
-responses were checked on October 26, 2026, including the five autonomous-region
-capital examples above. The endpoints currently require no API key.
+## 网络请求与错误处理
 
-Requests share a default HTTP client with a total timeout of three seconds per
-request. The library does not retry automatically. Responses must have an HTTP
-2xx status, contain at most 1 MiB, and decode as exactly one JSON value. Unknown
-JSON fields are accepted.
+IP 定位调用 IPIP 的 `https://myip.ipip.net/json`，天气查询调用腾讯的 `https://wis.qq.com/weather/common`。服务可用性、响应格式和城市覆盖由上游决定。
 
-IPIP must report `ret: "ok"`. Tencent must report `status: 200`; this business
-status is checked even if an error response also contains observation fields.
-The weather code, temperature, and humidity must parse as integers, humidity
-must be between 0 and 100, and the update time must be nonblank. A blank or
-malformed required field returns an error instead of partial weather data.
+所有请求共用一个总超时为 **3 秒** 的 HTTP 客户端，不自动重试。响应必须为 HTTP 2xx、大小不超过 **1 MiB**，并包含单个有效 JSON 值；允许未知字段。
 
-Errors identify the provider and failed request, response, or field. Underlying
-request, read, JSON, and numeric conversion errors remain available through
-`errors.Is` and `errors.As` where applicable. Use `errors.As(err, &providerError)`
-with a `*weather.Error` to inspect `Provider`, `Stage`, `HTTPStatus`,
-`BusinessCode`, and `Field`; HTTP 429 and provider business failures can be
-handled separately. `errors.Is(err, context.Canceled)` and
-`errors.Is(err, context.DeadlineExceeded)` preserve cancellation causes.
-`ErrResponseTooLarge` identifies the response-size limit. The package exposes
-no custom client or automatic retry configuration. Callers should handle errors
-before using returned values.
+IPIP 的 `ret` 必须为 `ok`，腾讯的业务 `status` 必须为 `200`。天气代码、温度和湿度必须能解析为整数，湿度范围为 0～100，更新时间不得为空。必需字段无效时返回错误，不返回部分天气数据。
 
-## Development and validation
+可用 `errors.As(err, &providerError)` 取得 `*weather.Error`，检查 `Provider`、`Stage`、`HTTPStatus`、`BusinessCode` 和 `Field`，区分 HTTP 限流、业务错误和字段错误。底层网络、读取、JSON 解析和数字转换错误保留在错误链中；可通过 `errors.Is` 识别 `context.Canceled`、`context.DeadlineExceeded` 和 `weather.ErrResponseTooLarge`。
 
-Normal tests use local fixtures and do not contact either provider:
+库未暴露自定义 HTTP 客户端或自动重试配置。使用返回值前请先处理错误。
+
+## 开发与验证
+
+常规测试使用本地数据，不调用天气或定位服务：
 
 ```sh
 go test ./...
@@ -286,41 +213,16 @@ go test -race ./...
 go vet ./...
 ```
 
-CI uses [Go Test Report Action](https://github.com/soulteary/go-test-report-action)
-to run tests with the race detector and atomic coverage, and
-[Go Report Card Action](https://github.com/soulteary/goreportcard-action) to
-generate the quality report. The README badges link to their generated reports,
-following [grantseal](https://github.com/soulteary/grantseal). The test report
-covers `./...`, including the Flare and SVG gallery examples; live provider
-tests remain opt-in. No coverage or grade threshold is imposed by these reports.
-
-Reports and raw test results are available as workflow artifacts, including on
-pull requests. After tests and cross-builds pass on the default branch, a
-separate job commits the five stable report/badge files only if the branch still
-matches the tested commit. PRs and tag runs never write reports back. The first
-successful default-branch run creates the badge files; report publication needs
-the repository to allow the workflow's `contents: write` permission.
-
-After modules are available locally, `GOPROXY=off go test ./...` checks that the
-test suite runs without downloading dependencies. Examples that access the
-providers are compiled during normal tests and are not executed automatically.
-Deterministic icon examples run offline.
-
-Live API tests are opt-in and can fail because of provider or network conditions:
+依赖已就绪时，可运行 `GOPROXY=off go test ./...` 验证离线测试。真实服务测试需要主动开启，可能受网络或上游服务影响：
 
 ```sh
 go test -tags integration -run 'Integration$' -count=1 .
 ```
 
-The GitHub Actions workflow uses Go 1.27.3 from `go.mod` on Linux, checks the
-race detector and `go vet`, and cross-compiles the library for Windows and macOS.
-A manual workflow run can also enable the live integration checks. Regular
-pushes and pull requests run the offline suite only.
+CI 在 Linux 上使用 Go 1.27.3，运行离线测试、竞态检测、静态检查，并交叉编译 Windows 和 macOS 版本。手动工作流可以开启真实服务测试。
 
-## License and icon credits
+[Go Test Report Action](https://github.com/soulteary/go-test-report-action) 和 [Go Report Card Action](https://github.com/soulteary/goreportcard-action) 生成覆盖率与质量报告。报告覆盖主包、Flare 缓存示例和图标画廊示例，可通过顶部徽章查看。PR 的报告和原始结果保存在工作流产物中；默认分支验证成功且提交未变化时，CI 自动更新报告文件。PR 和标签构建不会回写报告。
 
-The Go code is distributed under the [BSD 3-Clause License](LICENSE). The SVG
-assets were selected and modified from
-[Bram Kragten's weather-card](https://github.com/bramkragten/weather-card) and
-[Bas Milius's weather-icons](https://github.com/basmilius/weather-icons).
-Their MIT notices are retained in [icons/README.md](icons/README.md).
+## 许可证与图标来源
+
+Go 代码使用 [BSD 3-Clause License](LICENSE)。SVG 图标选取并修改自 [Bram Kragten 的 weather-card](https://github.com/bramkragten/weather-card) 和 [Bas Milius 的 weather-icons](https://github.com/basmilius/weather-icons)，MIT 许可声明保留在 [图标说明](icons/README.md) 中。
