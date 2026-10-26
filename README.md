@@ -201,7 +201,7 @@ func GetObservationAt(ctx context.Context, location Location) (Observation, erro
 func ParseUpdateTime(raw string) (time.Time, error)
 ```
 
-`Observation` 还提供 `Age` 和 `IsStale` 方法。天气查询示例统一采用选定的 `Location` 与 `GetObservationAt`；图标迁移见 [v0.3.0 发布说明](docs/releases/v0.3.0.md) 和 [变更记录](CHANGELOG.md)。当前地名选择接口尚未发布为稳定版本，`@main` 获取开发代码。发布流程见 [发布指南](docs/releasing.md)。
+`Observation` 还提供 `Age` 和 `IsStale` 方法。历史版本变化见 [变更记录](CHANGELOG.md)，发布流程见 [发布指南](docs/releasing.md)。
 
 ## 网络请求与错误处理
 

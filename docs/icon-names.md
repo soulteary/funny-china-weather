@@ -124,24 +124,4 @@ Deploy/rebuild the application with one version of this library. Restart to
 clear existing in-memory weather data. Any caller that hardcodes or persists
 old keys must replace them using the mapping above; old serialized keys are
 intentionally rejected. Public function compatibility does not mean resource
-name compatibility. The adjacent Flare repository is not modified by this change.
-
-## Validation
-
-`go test ./...`, `go test -race ./...` and `go vet ./...` cover the canonical
-resource inventory, rejection of removed keys, all selector-to-SVG pairs,
-day/night boundaries, SVG composition/static output and Flare-style caching.
-The test fixture `testdata/icon_names.json` records all renamed keys.
-Historical v0.2.0 release notes retain the names shipped in that release.
-
-The reusable Flare-side test is saved at
-`testdata/flare/canonical_weather_test.go` and covers 44 weather-code cases,
-including the six visibility extensions. To reproduce, copy a compatible Flare
-checkout to a temporary directory, put that test in its
-`internal/settings/weather/` directory, and add a local `go.mod` replacement
-pointing this weather module to the current checkout, which contains the
-expanded mappings. Run `go test ./...` and
-`go test -race ./internal/settings/weather ./internal/pages/home` from that
-temporary copy. The fixture is under `testdata` so it does not add Flare
-dependencies to this library or its normal tests. These offline checks do not
-verify live providers or browser animation.
+name compatibility.
