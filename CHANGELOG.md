@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased
+## v0.3.0
+
+See the [release notes](docs/releases/v0.3.0.md) for migration from v0.2.0.
 
 - Rename weather resource keys to explicit condition/intensity/day-night names;
   remove old-name lookup without aliases. See [the naming guide](docs/icon-names.md).
@@ -8,6 +10,11 @@
   night, instead of sunny artwork. The embedded set now contains 34 SVG assets.
 - Keep public function signatures and selector-to-SVG use compatible with Flare;
   literal old keys and persisted old-key caches must be migrated.
+
+- Add a self-contained gallery of all 34 SVGs, with weather/matching labels,
+  search, size/background controls, animation pause and static-output preview.
+- Generate coverage and quality reports with pinned Go Test Report and Go Report
+  Card actions; publish repository-local README badges with guarded writeback.
 
 ## v0.2.0
 

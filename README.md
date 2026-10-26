@@ -6,20 +6,19 @@ A small Go library for current weather in China and animated SVG weather icons.
 It can locate the outgoing IP address, fetch Tencent observations for a province
 and city, and select an embedded icon by weather code.
 
-The icon examples below describe the current development version. Published
-`v0.2.0` uses the previous resource names; see the [icon naming and migration
-guide](docs/icon-names.md). After these changes are merged, install `@main` to
-try the renamed resources before the next release. Old resource names are not
-accepted by the development version.
+v0.3.0 uses explicit icon resource names without aliases for old keys. See the
+[icon naming and migration guide](docs/icon-names.md) when upgrading from v0.2.0.
+Flare's selector-to-SVG calls retain their signatures; restart after upgrading
+to clear old cached keys.
 
 ## Requirements and installation
 
 Go 1.27.3 or later is required. Development and CI use Go 1.27.3.
 
-Install v0.2.0 after its version tag has been published:
+Install v0.3.0:
 
 ```sh
-go get github.com/soulteary/funny-china-weather@v0.2.0
+go get github.com/soulteary/funny-china-weather@v0.3.0
 ```
 
 Import the module with the package name `weather`:
@@ -28,12 +27,9 @@ Import the module with the package name `weather`:
 import weather "github.com/soulteary/funny-china-weather"
 ```
 
-During release preparation, `@main` selects the current development code.
-Merging changes does not publish a version: plain `go get` selects the latest
-published tag. See the [v0.2.0 release checklist](docs/releases/v0.2.0-checklist.md)
-for publication gates, the [release notes](docs/releases/v0.2.0.md) for migration
-from v0.1.1, and [release steps](docs/releasing.md) for publishing and verifying
-the version through the Go module proxy.
+`@main` selects development code; merging changes does not publish a version.
+See the [v0.3.0 release notes](docs/releases/v0.3.0.md) for the resource-name
+migration and [release steps](docs/releasing.md) for publication and proxy checks.
 
 The library includes its SVG assets and has no runtime dependencies outside the
 Go standard library. Location and observation requests require network access;
