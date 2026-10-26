@@ -6,6 +6,12 @@ A small Go library for current weather in China and animated SVG weather icons.
 It can locate the outgoing IP address, fetch Tencent observations for a province
 and city, and select an embedded icon by weather code.
 
+[![Complete offline gallery of all 34 SVG weather icons, including day and night variants, resource details, and preview controls](docs/icon-preview.png)](docs/icon-preview.html)
+
+Eight animated examples (GIF, approximately 252 KB); click to open the full gallery.
+
+[![Animated SVG weather icons: clear day, clear night, cloudy day, showers, heavy snow, thunderstorm, fog, and wind](docs/icon-preview-animated.gif)](docs/icon-preview.html)
+
 v0.3.0 uses explicit icon resource names without aliases for old keys. See the
 [icon naming and migration guide](docs/icon-names.md) when upgrading from v0.2.0.
 Flare's selector-to-SVG calls retain their signatures; restart after upgrading
