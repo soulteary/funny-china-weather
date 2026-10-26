@@ -159,20 +159,7 @@ func parseLocation(value string) (administrativeLocation, error) {
 		return administrativeLocation{province, province}, nil
 	}
 
-	// Prefer the longest recognized prefix, including historical aliases.
-	var prefix, province string
-	for alias, canonical := range provinceAliases {
-		if strings.HasPrefix(value, alias) && len(alias) > len(prefix) {
-			prefix, province = alias, canonical
-		}
-	}
-	for _, canonical := range ordinaryProvinces {
-		for _, alias := range []string{canonical, strings.TrimSuffix(canonical, "省")} {
-			if strings.HasPrefix(value, alias) && len(alias) > len(prefix) {
-				prefix, province = alias, canonical
-			}
-		}
-	}
+	prefix, province := locationProvincePrefix(value)
 	if prefix == "" || isMunicipality(province) {
 		return administrativeLocation{}, fmt.Errorf("location must contain a supported province and city: %q", value)
 	}
@@ -191,4 +178,21 @@ func (location administrativeLocation) String() string {
 		return location.province
 	}
 	return location.province + location.city
+}
+
+func locationProvincePrefix(value string) (prefix, province string) {
+	// Prefer the longest recognized prefix, including historical aliases.
+	for alias, canonical := range provinceAliases {
+		if strings.HasPrefix(value, alias) && len(alias) > len(prefix) {
+			prefix, province = alias, canonical
+		}
+	}
+	for _, canonical := range ordinaryProvinces {
+		for _, alias := range []string{canonical, strings.TrimSuffix(canonical, "省")} {
+			if strings.HasPrefix(value, alias) && len(alias) > len(prefix) {
+				prefix, province = alias, canonical
+			}
+		}
+	}
+	return prefix, province
 }

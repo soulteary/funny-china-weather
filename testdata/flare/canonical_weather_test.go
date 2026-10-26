@@ -52,9 +52,14 @@ func TestFlareCanonicalWeatherFlow(t *testing.T) {
 		if err := tmpl.Execute(&output, map[string]any{"WeatherIcon": svg, "WeatherData": result}); err != nil {
 			t.Fatal(err)
 		}
-		if !strings.Contains(output.String(), "<svg") || strings.Contains(output.String(), "&lt;svg") || !strings.Contains(output.String(), "20°C 50%") {
-			t.Fatalf("bad template output for code %d", code)
-		}
+		checkCanonicalTemplate(t, output.String(), code)
 	}
 	t.Logf("Flare's actual GetWeatherInfo and legacy SVG template flow passed for %d codes", len(codes))
+}
+
+func checkCanonicalTemplate(t *testing.T, output string, code int) {
+	t.Helper()
+	if !strings.Contains(output, "<svg") || strings.Contains(output, "&lt;svg") || !strings.Contains(output, "20°C 50%") {
+		t.Fatalf("bad template output for code %d", code)
+	}
 }

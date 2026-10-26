@@ -42,28 +42,7 @@ func TestProviderFailureRetryAndRecovery(t *testing.T) {
 	if !first.Available || first.Stale || first.Observation.TemperatureC != 20 || !strings.Contains(string(first.WeatherIcon), "<svg") {
 		t.Fatalf("initial render: %+v", first)
 	}
-	at = at.Add(10*time.Minute - time.Nanosecond)
-	if v := c.Get(context.Background(), "北京市"); v.Stale || calls != 1 || v.WeatherIcon == first.WeatherIcon {
-		t.Fatal("cache must reuse observation but generate isolated SVGs")
-	}
-	at = at.Add(time.Nanosecond)
-	failed := c.Get(context.Background(), "北京市")
-	var providerError *weather.Error
-	if !failed.Available || !failed.Stale || failed.Observation != first.Observation || !errors.As(failed.LastError, &providerError) || providerError.Stage != "business" {
-		t.Fatalf("failed refresh: %+v", failed)
-	}
-	at = at.Add(time.Minute - time.Nanosecond)
-	for i := 0; i < 20; i++ {
-		c.Get(context.Background(), "北京市")
-	}
-	if calls != 2 {
-		t.Fatalf("retry storm: %d requests", calls)
-	}
-	at = at.Add(time.Nanosecond)
-	recovered := c.Get(context.Background(), "北京市")
-	if calls != 3 || recovered.Stale || recovered.LastError != nil {
-		t.Fatalf("recovery: %+v", recovered)
-	}
+	checkCacheRetry(t, c, &at, &calls, first)
 }
 
 func TestMissingDataLocationIsolationAndConcurrency(t *testing.T) {
@@ -142,5 +121,31 @@ func TestTemplateStatus(t *testing.T) {
 				t.Fatalf("rendered %q, want %q", out.String(), tc.want)
 			}
 		})
+	}
+}
+
+func checkCacheRetry(t *testing.T, c *Cache, clock *time.Time, count *int, first View) {
+	t.Helper()
+	*clock = clock.Add(10*time.Minute - time.Nanosecond)
+	if v := c.Get(context.Background(), "北京市"); v.Stale || *count != 1 || v.WeatherIcon == first.WeatherIcon {
+		t.Fatal("cache must reuse observation but generate isolated SVGs")
+	}
+	*clock = clock.Add(time.Nanosecond)
+	failed := c.Get(context.Background(), "北京市")
+	var providerError *weather.Error
+	if !failed.Available || !failed.Stale || failed.Observation != first.Observation || !errors.As(failed.LastError, &providerError) || providerError.Stage != "business" {
+		t.Fatalf("failed refresh: %+v", failed)
+	}
+	*clock = clock.Add(time.Minute - time.Nanosecond)
+	for i := 0; i < 20; i++ {
+		c.Get(context.Background(), "北京市")
+	}
+	if *count != 2 {
+		t.Fatalf("retry storm: %d requests", *count)
+	}
+	*clock = clock.Add(time.Nanosecond)
+	recovered := c.Get(context.Background(), "北京市")
+	if *count != 3 || recovered.Stale || recovered.LastError != nil {
+		t.Fatalf("recovery: %+v", recovered)
 	}
 }

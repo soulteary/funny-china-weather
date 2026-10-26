@@ -51,6 +51,11 @@ func TestLiveCacheIntegration(t *testing.T) {
 		t.Fatal("missing or reused inline SVG")
 	}
 	t.Logf("requests=%d; temperature=%d°C humidity=%d%% code=%d update=%s stale=%t; cache hit and expiry refresh passed", calls, refreshed.Observation.TemperatureC, refreshed.Observation.HumidityPercent, refreshed.Observation.Code, refreshed.Observation.UpdateTime, refreshed.Stale)
+	writeLivePreview(t, []View{first, cached, refreshed})
+}
+
+func writeLivePreview(t *testing.T, views []View) {
+	t.Helper()
 	if path := os.Getenv("FLARE_LIVE_PREVIEW"); path != "" {
 		page := template.Must(template.New("preview").Parse(`<!doctype html><html lang="zh"><meta charset="utf-8"><title>Flare live weather verification</title><style>body{font:18px system-ui;background:#f3f5f8;color:#202632;margin:48px}section{display:inline-block;background:white;padding:28px;margin:12px;border-radius:16px;vertical-align:top}svg{width:128px;height:128px}small{display:block;color:#667}</style><h1>Flare · 北京实时天气</h1>{{range .}}<section>{{.WeatherIcon}}<p>{{.Observation.TemperatureC}}°C · {{.Observation.HumidityPercent}}%</p><p>{{.ConditionText}}</p><small>{{.Observation.UpdateTime}}</small>{{if .Stale}}<p>天气已过期</p>{{end}}</section>{{end}}<p>首次获取 / 缓存命中 / 到期刷新</p></html>`))
 		f, err := os.Create(path)
@@ -58,7 +63,7 @@ func TestLiveCacheIntegration(t *testing.T) {
 			t.Fatal(err)
 		}
 		defer f.Close()
-		if err := page.Execute(f, []View{first, cached, refreshed}); err != nil {
+		if err := page.Execute(f, views); err != nil {
 			t.Fatal(err)
 		}
 	}

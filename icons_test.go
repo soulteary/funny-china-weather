@@ -28,35 +28,7 @@ func TestGetIconSVGAllResources(t *testing.T) {
 				t.Fatalf("GetIconSVG(%q) = (%q, %v), want nonempty SVG and true", key, svg, ok)
 			}
 
-			decoder := xml.NewDecoder(strings.NewReader(svg))
-			var root xml.Name
-			var viewBox string
-			for {
-				token, err := decoder.Token()
-				if err == io.EOF {
-					break
-				}
-				if err != nil {
-					t.Fatalf("invalid SVG XML: %v", err)
-				}
-				if start, ok := token.(xml.StartElement); ok && root.Local == "" {
-					root = start.Name
-					for _, attr := range start.Attr {
-						if attr.Name.Local == "viewBox" {
-							viewBox = attr.Value
-						}
-						if attr.Name.Local == "viewbox" {
-							t.Fatal("incorrect lowercase viewbox attribute")
-						}
-					}
-				}
-			}
-			if len(strings.Fields(viewBox)) != 4 {
-				t.Fatalf("invalid root viewBox %q", viewBox)
-			}
-			if root.Local != "svg" || root.Space != "http://www.w3.org/2000/svg" {
-				t.Fatalf("root element = %#v, want SVG namespace root", root)
-			}
+			checkIconRoot(t, svg)
 		})
 	}
 }
@@ -86,5 +58,38 @@ func TestWeatherIconResourcesExist(t *testing.T) {
 		if svg, ok := GetIconSVG(key); !ok || svg == "" {
 			t.Errorf("weather code %d refers to missing icon %q", code, key)
 		}
+	}
+}
+
+func checkIconRoot(t *testing.T, svg string) {
+	t.Helper()
+	decoder := xml.NewDecoder(strings.NewReader(svg))
+	var root xml.Name
+	var viewBox string
+	for {
+		token, err := decoder.Token()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			t.Fatalf("invalid SVG XML: %v", err)
+		}
+		if start, ok := token.(xml.StartElement); ok && root.Local == "" {
+			root = start.Name
+			for _, attr := range start.Attr {
+				if attr.Name.Local == "viewBox" {
+					viewBox = attr.Value
+				}
+				if attr.Name.Local == "viewbox" {
+					t.Fatal("incorrect lowercase viewbox attribute")
+				}
+			}
+		}
+	}
+	if len(strings.Fields(viewBox)) != 4 {
+		t.Fatalf("invalid root viewBox %q", viewBox)
+	}
+	if root.Local != "svg" || root.Space != "http://www.w3.org/2000/svg" {
+		t.Fatalf("root element = %#v, want SVG namespace root", root)
 	}
 }
