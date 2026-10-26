@@ -2,9 +2,9 @@
 
 A city's weather, at a glance.
 
-[简体中文](README.md) | **English**
-
 [![Go Report Card](.github/goreportcard.svg)](.github/goreportcard-report.md) [![Coverage](.github/coverage.svg)](.github/go-test-report.md)
+
+[简体中文](README.md) | **English**
 
 晴雨笺 (Qingyu Jian) is a lightweight Go library for current weather in China, outgoing-IP geolocation, and SVG icons selected by weather code. Its Chinese name evokes a small note about clear skies and rain. Use it in personal homepages, dashboards, and applications such as Flare.
 
