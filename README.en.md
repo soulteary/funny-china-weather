@@ -30,10 +30,10 @@ The animation below shows clear skies by day and night, clouds, showers, heavy s
 Requires **Go 1.27.3 or later**.
 
 ```sh
-go get github.com/soulteary/funny-china-weather@main
+go get github.com/soulteary/funny-china-weather@v0.4.0
 ```
 
-These APIs are part of the current development version, so installation uses `@main`.
+The examples below target v0.4.0.
 
 **Follow the location selection in [Tencent Weather](https://tianqi.qq.com/)**: search, select a specific city, district, or county, and retain its province/city/county fields. Check parent regions to distinguish places with the same name.
 

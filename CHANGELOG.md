@@ -2,10 +2,13 @@
 
 ## Unreleased
 
+## v0.4.0
+
+See the [release notes](docs/releases/v0.4.0.md) for location-input migration.
+
 - Recognize codes 49 and 54–58 with precise fog/haze descriptions.
 - Add 15 animated SVG resources for fog/haze intensity, blowing sand, sandstorms, rainstorms and snowstorms; retain all existing keys.
 - Select specific artwork for existing intensity codes and regenerate the 49-icon preview.
-
 
 - Resolve weather search keywords through Tencent's `/city/like` directory;
   remove local province aliases, suffix inference, and Chinese address parsing.
@@ -18,6 +21,12 @@
   concatenated full addresses must migrate; function signatures are unchanged.
 - Resolve IPIP city names through Tencent with exact province matching. IP
   location strings now use provider fields such as `浙江, 杭州`, without suffixes.
+
+- Lazily compile animated/static SVG templates and reuse immutable fragments.
+- Coalesce Flare example refreshes per location, support cancellation while
+  waiting, and bound the cache to 128 entries with one-hour idle eviction.
+- Add Flare `Cache.GetAt` for selected locations without repeated searches.
+- Adopt the Chinese project name 晴雨笺 and bilingual documentation.
 
 ## v0.3.0
 

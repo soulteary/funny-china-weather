@@ -9,7 +9,7 @@ return an empty result / `false`; no compatibility aliases are provided.
 Use `condition[-intensity][-day|night]`, for example `rain-light` and
 `snow-showers-night`. Names without a day/night suffix are shared across the
 day. `variant-N` denotes alternate artwork, never an official weather intensity.
-The current development tree adds 15 resources to the 34 shipped in v0.3.0.
+v0.4.0 adds 15 resources to the 34 shipped in v0.3.0.
 There are 49 resources: 38 automatically selected (including `unknown`) and
 11 alternate/manual resources. Existing artwork is unchanged by the rename;
 `unknown` is a new neutral question-mark SVG.
