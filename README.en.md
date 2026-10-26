@@ -201,7 +201,7 @@ func GetObservationAt(ctx context.Context, location Location) (Observation, erro
 func ParseUpdateTime(raw string) (time.Time, error)
 ```
 
-`Observation` also provides `Age` and `IsStale`. Weather examples consistently use a selected `Location` with `GetObservationAt`. See the [v0.3.0 release notes](docs/releases/v0.3.0.md) and [changelog](CHANGELOG.md) for icon migration. The current location-selection APIs are not yet in a stable release; `@main` selects development code. See the [release guide](docs/releasing.md) for publication steps.
+`Observation` also provides `Age` and `IsStale`. See the [changelog](CHANGELOG.md) for version history and the [release guide](docs/releasing.md) for publication steps.
 
 ## Network behavior and errors
 
