@@ -6,7 +6,7 @@
 
 一个轻量的 Go 天气库：查询中国境内城市的实时天气，根据出口 IP 定位，并按天气代码选择可直接嵌入页面的 SVG 图标。适合个人主页、仪表盘和 Flare 等应用。
 
-- 内置 **34 个 SVG 图标**，支持昼夜切换、动画和静态版本。
+- 内置 **49 个 SVG 图标**，支持昼夜切换、动画和静态版本。
 - 提供温度、湿度、天气描述和上游更新时间，支持通过 `context` 取消请求。
 - 仅依赖 Go 标准库。天气查询和 IP 定位需要联网；图标选择与 SVG 读取可离线使用。
 
@@ -17,9 +17,9 @@
 [![8 种代表天气的 SVG 动画效果](docs/icon-preview-animated.gif)](docs/icon-preview.html)
 
 <details>
-<summary>查看全部 34 个图标的静态总览</summary>
+<summary>查看全部 49 个图标的静态总览</summary>
 
-[![全部 34 个 SVG 天气图标，包含名称、天气说明和自动匹配状态](docs/icon-preview.png)](docs/icon-preview.html)
+[![全部 49 个 SVG 天气图标，包含名称、天气说明和自动匹配状态](docs/icon-preview.png)](docs/icon-preview.html)
 
 </details>
 
@@ -166,7 +166,7 @@ key, description := weather.GetWeatherIconAt(3, at)
 
 ### 图标名称与页面内联
 
-`GetIconSVG` 接受精确的图标名，例如 `cloudy-day`，返回完整 SVG 字符串。不接受路径或 `.svg` 扩展名；名称无效或不存在时返回 `"", false`。全部 34 个资源均已嵌入，无需额外生成或部署图标文件。
+`GetIconSVG` 接受精确的图标名，例如 `cloudy-day`，返回完整 SVG 字符串。不接受路径或 `.svg` 扩展名；名称无效或不存在时返回 `"", false`。全部 49 个资源均已嵌入，无需额外生成或部署图标文件。
 
 每次调用都会为 SVG 的 ID、引用、CSS 类和动画名称生成独立前缀，方便在同一页面内联多个图标。源文件具有有效的 `viewBox`，可通过根元素尺寸缩放。同一图标的不同调用可能返回不同字节内容。
 
@@ -174,7 +174,7 @@ key, description := weather.GetWeatherIconAt(3, at)
 - **需要静态图标**：使用 `GetStaticIconSVG(key)`，移除 SMIL 动画并禁用 CSS 动画。应用可根据用户的减少动态效果偏好选择静态版本。
 - **需要缓存 SVG**：每个页面插槽使用独立前缀，并将图标名称与插槽前缀都纳入缓存键。同一段最终 SVG 不应复制到多个位置，否则内部 ID 会重复。固定前缀只保证输出稳定，不会自动缓存解析结果。
 
-天气文字说明参考 [中国天气图例](https://www.weather.com.cn/pub/legend.shtml)，支持扩展代码 `53`（霾）、`301`（雨）、`302`（雪）。不同强度的降雨、雾与霾等可能共用图案，请保留返回的天气描述，不要仅凭图标推断精确天气。
+天气文字说明参考 [中国天气图例](https://www.weather.com.cn/pub/legend.shtml)，支持扩展代码 `53`（霾）、`301`（雨）、`302`（雪）。新增 `49`（强浓雾）、`54–56`（中度、重度、严重霾）、`57`（大雾）、`58`（特强浓雾），编码名称参考 [华风爱科编码表](https://apidoc.weathercn.com/developers/best-practices.html)。雾、霾、沙尘、暴雨和暴雪具有独立图案；过渡强度天气仍可能共用图案，请保留返回的天气描述，不要仅凭图标推断精确天气。
 
 完整名称和代码映射见 [图标命名说明](docs/icon-names.md)。重新生成离线画廊：
 

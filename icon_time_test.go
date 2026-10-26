@@ -37,7 +37,11 @@ func TestGetWeatherIconAtTimeZones(t *testing.T) {
 }
 
 func TestIconVariantsReferenceExistingResources(t *testing.T) {
+	codes := []int{49, 53, 54, 55, 56, 57, 58, 301, 302}
 	for code := 0; code <= 32; code++ {
+		codes = append(codes, code)
+	}
+	for _, code := range codes {
 		for _, hour := range []int{8, 23} {
 			at := time.Date(2026, time.October, 26, hour, 0, 0, 0, time.UTC)
 			key, _ := weather.GetWeatherIconAt(code, at)

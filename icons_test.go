@@ -12,8 +12,8 @@ func TestGetIconSVGAllResources(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(entries) != 34 {
-		t.Fatalf("embedded %d icons, want 34", len(entries))
+	if len(entries) != 49 {
+		t.Fatalf("embedded %d icons, want 49", len(entries))
 	}
 	for _, entry := range entries {
 		entry := entry
@@ -52,7 +52,7 @@ func TestGetIconSVGInvalidKeys(t *testing.T) {
 func TestWeatherIconResourcesExist(t *testing.T) {
 	// Cover all provider codes, special icons, and the unknown-code fallback.
 	codes := []int{-1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
-		16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 123}
+		16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 49, 53, 54, 55, 56, 57, 58, 301, 302, 123}
 	for _, code := range codes {
 		key, _ := GetWeatherIconByCode(code)
 		if svg, ok := GetIconSVG(key); !ok || svg == "" {

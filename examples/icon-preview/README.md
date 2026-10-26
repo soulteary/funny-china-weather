@@ -7,9 +7,9 @@ go run ./examples/icon-preview
 ```
 
 Open `docs/icon-preview.html` directly in a browser. The generated file contains
-all 34 canonical SVG resources and needs no server, network access or external
+all 49 canonical SVG resources and needs no server, network access or external
 assets. Each card labels the resource key, condition, weather codes, day/night
-period, animation presence and automatic/manual matching status. The 23
+period, animation presence and automatic/manual matching status. The 38
 automatic resources include the unknown-code fallback; 11 are manual variants.
 
 Search by key, condition or code, filter by matching status, adjust the icon

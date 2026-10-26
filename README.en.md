@@ -6,7 +6,7 @@
 
 A lightweight Go library for current weather in China, outgoing-IP geolocation, and SVG icons selected by weather code. Use it in personal homepages, dashboards, and applications such as Flare.
 
-- **34 embedded SVG icons**, with day/night variants, animation, and static output.
+- **49 embedded SVG icons**, with day/night variants, animation, and static output.
 - Temperature, humidity, weather descriptions, and upstream update times, with request cancellation through `context`.
 - Go standard library only. Weather and IP lookups need network access; icon selection and SVG lookup work offline.
 
@@ -17,9 +17,9 @@ The animation below shows clear skies by day and night, clouds, showers, heavy s
 [![Eight representative animated SVG weather icons](docs/icon-preview-animated.gif)](docs/icon-preview.html)
 
 <details>
-<summary>View the complete static gallery of all 34 icons</summary>
+<summary>View the complete static gallery of all 49 icons</summary>
 
-[![All 34 SVG weather icons, with names, conditions, and automatic matching status](docs/icon-preview.png)](docs/icon-preview.html)
+[![All 49 SVG weather icons, with names, conditions, and automatic matching status](docs/icon-preview.png)](docs/icon-preview.html)
 
 </details>
 
@@ -166,7 +166,7 @@ It uses the hour in the supplied time's location without converting time zones. 
 
 ### Resource names and inline SVG
 
-`GetIconSVG` accepts an exact key such as `cloudy-day` and returns a complete SVG string. Paths and `.svg` extensions are rejected; invalid or missing keys return `"", false`. All 34 assets are embedded, so no extra asset generation or deployment is needed.
+`GetIconSVG` accepts an exact key such as `cloudy-day` and returns a complete SVG string. Paths and `.svg` extensions are rejected; invalid or missing keys return `"", false`. All 49 assets are embedded, so no extra asset generation or deployment is needed.
 
 Each call isolates SVG IDs, references, CSS classes, and animation names with a unique instance prefix, allowing multiple icons in one HTML document. Source assets have valid `viewBox` attributes and scale with root dimensions. Separate calls for the same icon can produce different bytes.
 
@@ -174,7 +174,7 @@ Each call isolates SVG IDs, references, CSS classes, and animation names with a 
 - **Static output:** use `GetStaticIconSVG(key)` to remove SMIL animations and disable CSS animations. Applications can select it for users who prefer reduced motion.
 - **Caching:** use a unique prefix for each DOM slot and include both the key and slot prefix in the cache key. Reusing one final SVG string in multiple positions duplicates IDs. A fixed prefix provides stable output; it does not automatically cache parsing.
 
-Weather descriptions follow the [China Weather legend](https://www.weather.com.cn/pub/legend.shtml), including extended codes `53` (haze), `301` (rain), and `302` (snow). Some conditions share artwork, such as different rain intensities or fog and haze. Keep the returned description rather than inferring precise conditions from the icon alone.
+Weather descriptions follow the [China Weather legend](https://www.weather.com.cn/pub/legend.shtml), including extended codes `53` (haze), `301` (rain), and `302` (snow). Extensions `49` and `54–58` follow the [Huafeng WeatherCode table](https://apidoc.weathercn.com/developers/best-practices.html). Fog, haze, sandstorms, rainstorms and snowstorms have distinct artwork; precipitation ranges still share intensity icons. Keep the returned description rather than inferring precise conditions from the icon alone.
 
 See the [naming guide](docs/icon-names.md) for all keys and code mappings. Regenerate the offline gallery with:
 

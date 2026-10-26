@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Recognize codes 49 and 54–58 with precise fog/haze descriptions.
+- Add 15 animated SVG resources for fog/haze intensity, blowing sand, sandstorms, rainstorms and snowstorms; retain all existing keys.
+- Select specific artwork for existing intensity codes and regenerate the 49-icon preview.
+
+
 - Resolve weather search keywords through Tencent's `/city/like` directory;
   remove local province aliases, suffix inference, and Chinese address parsing.
 - Add `Location`, `SearchLocations`, and `GetObservationAt` to preserve provider

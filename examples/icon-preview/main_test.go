@@ -14,8 +14,8 @@ func TestCompletePreview(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(icons) != 34 {
-		t.Fatalf("%d resources, want 34", len(icons))
+	if len(icons) != 49 {
+		t.Fatalf("%d resources, want 49", len(icons))
 	}
 	automatic := 0
 	for _, item := range icons {
@@ -24,8 +24,8 @@ func TestCompletePreview(t *testing.T) {
 		}
 		checkPreviewCard(t, item)
 	}
-	if automatic != 23 {
-		t.Fatalf("%d automatically matched, want 23", automatic)
+	if automatic != 38 {
+		t.Fatalf("%d automatically matched, want 38", automatic)
 	}
 	checkPreviewPage(t)
 }
@@ -37,7 +37,7 @@ func checkPreviewPage(t *testing.T) {
 		t.Fatal(err)
 	}
 	html := string(page)
-	if strings.Count(html, `<article class="card"`) != 34 || strings.Count(html, "<svg") != 68 {
+	if strings.Count(html, `<article class="card"`) != 49 || strings.Count(html, "<svg") != 98 {
 		t.Fatal("missing rendered cards or inline SVGs")
 	}
 	if strings.Contains(html, "&lt;svg") || strings.Contains(html, "ZgotmplZ") {
@@ -134,7 +134,24 @@ func TestMainWritesPreview(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := strings.Count(string(page), `<article class="card"`); got != 34 {
-		t.Fatalf("written preview has %d cards, want 34", got)
+	if got := strings.Count(string(page), `<article class="card"`); got != 49 {
+		t.Fatalf("written preview has %d cards, want 49", got)
+	}
+}
+
+// Static SVG instance names intentionally vary; all other generated content
+// must match the checked-in preview, including artwork and code labels.
+func TestCheckedInPreviewIsCurrent(t *testing.T) {
+	got, err := os.ReadFile("../../docs/icon-preview.html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want, err := render("../../icons")
+	if err != nil {
+		t.Fatal(err)
+	}
+	instance := regexp.MustCompile(`fcw-auto-[a-f0-9]{32}-[0-9]+`)
+	if instance.ReplaceAllString(string(got), "INSTANCE") != instance.ReplaceAllString(string(want), "INSTANCE") {
+		t.Fatal("preview is stale: run go run ./examples/icon-preview from the module root")
 	}
 }
