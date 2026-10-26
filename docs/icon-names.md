@@ -1,4 +1,4 @@
-# Weather icon names (v0.3.0)
+# Weather icon names
 
 v0.3.0 replaces the keys shipped in v0.2.0 with canonical lowercase names
 without `.svg` or a path. Old names
@@ -9,7 +9,8 @@ return an empty result / `false`; no compatibility aliases are provided.
 Use `condition[-intensity][-day|night]`, for example `rain-light` and
 `snow-showers-night`. Names without a day/night suffix are shared across the
 day. `variant-N` denotes alternate artwork, never an official weather intensity.
-There are 34 resources: 23 automatically selected (including `unknown`) and
+The current development tree adds 15 resources to the 34 shipped in v0.3.0.
+There are 49 resources: 38 automatically selected (including `unknown`) and
 11 alternate/manual resources. Existing artwork is unchanged by the rename;
 `unknown` is a new neutral question-mark SVG.
 
@@ -64,30 +65,36 @@ The new `unknown` key is the fallback for every unrecognized code.
 | 7 | 小雨 | `rain-light` | `rain-light` |
 | 8 | 中雨 | `rain-moderate` | `rain-moderate` |
 | 9 | 大雨 | `rain-heavy` | `rain-heavy` |
-| 10 | 暴雨 | `rain-heavy` | `rain-heavy` |
-| 11 | 大暴雨 | `rain-heavy` | `rain-heavy` |
-| 12 | 特大暴雨 | `rain-heavy` | `rain-heavy` |
+| 10 | 暴雨 | `rain-storm` | `rain-storm` |
+| 11 | 大暴雨 | `rain-storm-severe` | `rain-storm-severe` |
+| 12 | 特大暴雨 | `rain-storm-extreme` | `rain-storm-extreme` |
 | 13 | 阵雪 | `snow-showers-day` | `snow-showers-night` |
 | 14 | 小雪 | `snow-light` | `snow-light` |
 | 15 | 中雪 | `snow-moderate` | `snow-moderate` |
 | 16 | 大雪 | `snow-heavy` | `snow-heavy` |
-| 17 | 暴雪 | `snow-heavy` | `snow-heavy` |
+| 17 | 暴雪 | `snow-storm` | `snow-storm` |
 | 18 | 有雾 | `fog` | `fog` |
 | 19 | 冻雨 | `freezing-rain` | `freezing-rain` |
-| 20 | 沙尘暴 | `dust` | `dust` |
+| 20 | 沙尘暴 | `sandstorm` | `sandstorm` |
 | 21 | 小到中雨 | `rain-moderate` | `rain-moderate` |
 | 22 | 中到大雨 | `rain-heavy` | `rain-heavy` |
-| 23 | 大到暴雨 | `rain-heavy` | `rain-heavy` |
-| 24 | 暴雨到大暴雨 | `rain-heavy` | `rain-heavy` |
-| 25 | 大暴雨到特大暴雨 | `rain-heavy` | `rain-heavy` |
+| 23 | 大到暴雨 | `rain-storm` | `rain-storm` |
+| 24 | 暴雨到大暴雨 | `rain-storm-severe` | `rain-storm-severe` |
+| 25 | 大暴雨到特大暴雨 | `rain-storm-extreme` | `rain-storm-extreme` |
 | 26 | 小到中雪 | `snow-moderate` | `snow-moderate` |
 | 27 | 中到大雪 | `snow-heavy` | `snow-heavy` |
-| 28 | 大到暴雪 | `snow-heavy` | `snow-heavy` |
+| 28 | 大到暴雪 | `snow-storm` | `snow-storm` |
 | 29 | 浮尘 | `dust` | `dust` |
-| 30 | 扬沙 | `dust` | `dust` |
-| 31 | 强沙尘暴 | `dust` | `dust` |
-| 32 | 浓雾 | `fog` | `fog` |
-| 53 | 霾 | `fog` | `fog` |
+| 30 | 扬沙 | `sand` | `sand` |
+| 31 | 强沙尘暴 | `sandstorm-strong` | `sandstorm-strong` |
+| 32 | 浓雾 | `fog-dense` | `fog-dense` |
+| 49 | 强浓雾 | `fog-dense-strong` | `fog-dense-strong` |
+| 53 | 霾 | `haze` | `haze` |
+| 54 | 中度霾 | `haze-moderate` | `haze-moderate` |
+| 55 | 重度霾 | `haze-heavy` | `haze-heavy` |
+| 56 | 严重霾 | `haze-severe` | `haze-severe` |
+| 57 | 大雾 | `fog-heavy` | `fog-heavy` |
+| 58 | 特强浓雾 | `fog-dense-extreme` | `fog-dense-extreme` |
 | 301 | 雨 | `rain-light` | `rain-light` |
 | 302 | 雪 | `snow-light` | `snow-light` |
 | Other codes, including -1 | 未知 | `unknown` | `unknown` |
@@ -96,10 +103,14 @@ Daytime selection is 05:00 inclusive to 19:00 exclusive, in the supplied
 time zone (`GetWeatherIconAt`) or process zone (`GetWeatherIconByCode`).
 Only clear, cloudy, showers, rain/snow and snow showers have day/night pairs.
 
-Several weather conditions intentionally share artwork: `rain-heavy` covers
-multiple heavy-rain ranges; `fog` covers fog and haze; `dust` covers dust and
-sandstorm conditions. Preserve the returned description or provider description
-instead of inferring precise conditions from the resource name.
+Fog, haze, blowing sand, sandstorms, rainstorm intensities and snowstorms
+have independent artwork. Existing resource keys remain available; selector
+results for these conditions now use the more specific keys above. Code 29
+retains `dust` for suspended dust. Precipitation ranges use the upper intensity
+(e.g. 23 uses `rain-storm`); generic 301/302 retain light rain/snow artwork.
+Extensions 49 and 54–58 follow the [Huafeng WeatherCode table](https://apidoc.weathercn.com/developers/best-practices.html).
+Resource availability does not establish live observation coverage.
+Preserve descriptions to distinguish ranges sharing artwork.
 `freezing-rain` means code 19 (冻雨), separate from code 6 rain/snow (雨夹雪).
 
 ## Flare integration
@@ -131,6 +142,8 @@ current library's legacy SVG function and HTML template insertion with fixture
 HTTP responses; it checked temperature, humidity, timestamp and unknown fallback.
 No live provider or browser-animation result is implied by this offline check.
 
+The reusable Flare-side test now includes the six visibility extensions (44
+cases total); the historical 38-code result above predates this expansion.
 The reusable Flare-side test is saved at
 `testdata/flare/canonical_weather_test.go`. To reproduce, copy Flare to a
 temporary directory, put that test in its `internal/settings/weather/`

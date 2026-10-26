@@ -112,7 +112,7 @@ func TestWeatherIconsHighlightDistinctConditions(t *testing.T) {
 		{"freezing rain uses frozen precipitation", 19, "freezing-rain"},
 		{"light to moderate rain avoids the heaviest rain icon", 21, "rain-moderate"},
 		{"light to moderate snow avoids the heaviest snow icon", 26, "snow-moderate"},
-		{"haze uses the available visibility icon", 53, "fog"},
+		{"haze has independent artwork", 53, "haze"},
 		{"unspecified rain does not assume heavy intensity", 301, "rain-light"},
 		{"unspecified snow does not assume heavy intensity", 302, "snow-light"},
 	}
@@ -131,14 +131,14 @@ func TestWeatherIconsHighlightDistinctConditions(t *testing.T) {
 // The linked official legend does not list code 32, so its regression is separate.
 func TestDenseFogRetainsItsSpecificDescription(t *testing.T) {
 	key, name := GetWeatherIconAt(32, time.Date(2026, time.October, 26, 8, 0, 0, 0, time.UTC))
-	if key != "fog" || name != "浓雾" {
-		t.Fatalf("dense fog = (%q, %q), want available fog artwork and the specific condition", key, name)
+	if key != "fog-dense" || name != "浓雾" {
+		t.Fatalf("dense fog = (%q, %q), want dense fog artwork and the specific condition", key, name)
 	}
 }
 
 func TestIconByCodeAtTimeIndependentCodes(t *testing.T) {
 	codes := []int{2, 4, 5, 7, 8, 9, 10, 11, 12, 14, 15, 16, 17, 18, 19,
-		20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 53, 301, 302,
+		20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 49, 53, 54, 55, 56, 57, 58, 301, 302,
 		-999, -1, 33, 123}
 	for _, code := range codes {
 		at := time.Date(2026, time.October, 26, 0, 0, 0, 0, time.UTC)
@@ -167,6 +167,119 @@ func TestGetWeatherIconByCodeUnknown(t *testing.T) {
 		key, name := GetWeatherIconByCode(code)
 		if key != "unknown" || name != "未知" {
 			t.Errorf("GetWeatherIconByCode(%d) = (%q, %q), want unknown fallback", code, key, name)
+		}
+	}
+}
+
+func TestExtendedVisibilityCodes(t *testing.T) {
+	body, err := os.ReadFile("testdata/weather_extensions.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var fixture struct {
+		Source     string `json:"source"`
+		Conditions []struct {
+			Code        int    `json:"code"`
+			Key         string `json:"key"`
+			Description string `json:"description"`
+		} `json:"conditions"`
+	}
+	if err := json.Unmarshal(body, &fixture); err != nil {
+		t.Fatal(err)
+	}
+	if fixture.Source != "https://apidoc.weathercn.com/developers/best-practices.html" || len(fixture.Conditions) != 6 {
+		t.Fatal("missing sourced extension cases")
+	}
+	for _, c := range fixture.Conditions {
+		for _, hour := range []int{0, 12, 23} {
+			key, name := GetWeatherIconAt(c.Code, time.Date(2026, 10, 26, hour, 0, 0, 0, time.UTC))
+			if key != c.Key || name != c.Description {
+				t.Errorf("code %d: got %s/%s, want %s/%s", c.Code, key, name, c.Key, c.Description)
+			}
+		}
+	}
+}
+
+func TestWeatherIntensityArtworkIsDistinct(t *testing.T) {
+	groups := [][]int{{18, 32, 49, 57, 58}, {53, 54, 55, 56}, {29, 30, 20, 31}, {9, 10, 11, 12}, {16, 17}}
+	for _, codes := range groups {
+		seen := map[string]bool{}
+		for _, code := range codes {
+			key, _ := GetWeatherIconAt(code, time.Date(2026, 10, 26, 12, 0, 0, 0, time.UTC))
+			if seen[key] {
+				t.Errorf("code %d shares intensity artwork %s", code, key)
+			}
+			seen[key] = true
+			svg, ok := GetIconSVGWithPrefix(key, "compare")
+			if !ok {
+				t.Fatalf("missing %s", key)
+			}
+			for _, other := range codes {
+				if other == code {
+					continue
+				}
+				otherKey, _ := GetWeatherIconAt(other, time.Date(2026, 10, 26, 12, 0, 0, 0, time.UTC))
+				otherSVG, _ := GetIconSVGWithPrefix(otherKey, "compare")
+				if svg == otherSVG {
+					t.Errorf("codes %d and %d have identical artwork", code, other)
+				}
+			}
+		}
+	}
+	for code, want := range map[int]string{23: "rain-storm", 24: "rain-storm-severe", 25: "rain-storm-extreme", 28: "snow-storm"} {
+		key, _ := GetWeatherIconAt(code, time.Date(2026, 10, 26, 12, 0, 0, 0, time.UTC))
+		if key != want {
+			t.Errorf("range code %d uses %s, want %s", code, key, want)
+		}
+	}
+}
+
+func TestDocumentedWeatherMappings(t *testing.T) {
+	body, err := os.ReadFile("docs/icon-names.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	seen := map[int]bool{}
+	for _, line := range strings.Split(string(body), "\n") {
+		fields := strings.Split(line, "|")
+		if len(fields) != 6 {
+			continue
+		}
+		code, err := strconv.Atoi(strings.TrimSpace(fields[1]))
+		if err != nil {
+			continue
+		}
+		if seen[code] {
+			t.Fatalf("duplicate documented code %d", code)
+		}
+		seen[code] = true
+		for i, hour := range []int{12, 0} {
+			key, name := GetWeatherIconAt(code, time.Date(2026, 10, 26, hour, 0, 0, 0, time.UTC))
+			if key != strings.Trim(strings.TrimSpace(fields[3+i]), "`") {
+				t.Errorf("code %d hour %d: documented key differs from %s", code, hour, key)
+			}
+			if i == 0 && name != strings.TrimSpace(fields[2]) {
+				t.Errorf("code %d: documented label differs from %s", code, name)
+			}
+		}
+	}
+	if len(seen) != 42 {
+		t.Errorf("documented %d codes, want 42", len(seen))
+	}
+	for code := range weatherIconsByCode {
+		if !seen[code] {
+			t.Errorf("code %d missing from documentation", code)
+		}
+	}
+}
+
+func TestSpecificIntensityMappings(t *testing.T) {
+	for code, want := range map[int]string{10: "rain-storm", 11: "rain-storm-severe", 12: "rain-storm-extreme", 17: "snow-storm", 20: "sandstorm", 29: "dust", 30: "sand", 31: "sandstorm-strong", 32: "fog-dense", 53: "haze"} {
+		for _, hour := range []int{0, 12} {
+			key, _ := GetWeatherIconAt(code, time.Date(2026, 10, 26, hour, 0, 0, 0, time.UTC))
+			if key != want {
+				t.Errorf("code %d hour %d: %s, want %s", code, hour, key, want)
+			}
 		}
 	}
 }

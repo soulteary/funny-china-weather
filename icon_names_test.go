@@ -36,13 +36,16 @@ func TestCanonicalResourceNames(t *testing.T) {
 			t.Errorf("removed legacy key %q still accepted", old)
 		}
 	}
+	for _, key := range []string{"fog-dense", "fog-dense-strong", "fog-heavy", "fog-dense-extreme", "haze", "haze-moderate", "haze-heavy", "haze-severe", "sand", "sandstorm", "sandstorm-strong", "rain-storm", "rain-storm-severe", "rain-storm-extreme", "snow-storm"} {
+		want[key] = true
+	}
 	checkCanonicalAssets(t, want)
 }
 
 // Flare passes the selector's opaque key directly to the legacy template API.
 // Check the complete mapping at both times, including extended and unknown codes.
 func TestFlareSelectorToLegacySVG(t *testing.T) {
-	codes := []int{-1, 53, 301, 302, 999}
+	codes := []int{-1, 49, 53, 54, 55, 56, 57, 58, 301, 302, 999}
 	for code := 0; code <= 32; code++ {
 		codes = append(codes, code)
 	}

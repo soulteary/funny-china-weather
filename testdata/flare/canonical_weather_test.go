@@ -28,7 +28,7 @@ func TestFlareCanonicalWeatherFlow(t *testing.T) {
 		return &http.Response{StatusCode: 200, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(body))}, nil
 	})
 	tmpl := template.Must(template.New("weather").Parse(`<div class="pull-left">{{.WeatherIcon}}</div><div>{{.WeatherData.Degree}}°C {{.WeatherData.Humidity}}%</div>`))
-	codes := []int{-1, 53, 301, 302, 999}
+	codes := []int{-1, 49, 53, 54, 55, 56, 57, 58, 301, 302, 999}
 	for i := 0; i <= 32; i++ {
 		codes = append(codes, i)
 	}

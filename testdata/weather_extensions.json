@@ -1,0 +1,36 @@
+{
+  "source": "https://apidoc.weathercn.com/developers/best-practices.html",
+  "verified_on": "2026-10-26",
+  "conditions": [
+    {
+      "code": 49,
+      "key": "fog-dense-strong",
+      "description": "强浓雾"
+    },
+    {
+      "code": 54,
+      "key": "haze-moderate",
+      "description": "中度霾"
+    },
+    {
+      "code": 55,
+      "key": "haze-heavy",
+      "description": "重度霾"
+    },
+    {
+      "code": 56,
+      "key": "haze-severe",
+      "description": "严重霾"
+    },
+    {
+      "code": 57,
+      "key": "fog-heavy",
+      "description": "大雾"
+    },
+    {
+      "code": 58,
+      "key": "fog-dense-extreme",
+      "description": "特强浓雾"
+    }
+  ]
+}

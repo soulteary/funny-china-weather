@@ -91,7 +91,12 @@ func render(directory string) ([]byte, error) {
 	if err = tmpl.Execute(&out, data); err != nil {
 		return nil, err
 	}
-	return []byte(out.String()), nil
+	// Keep generated HTML free of trailing whitespace inherited from SVG sources.
+	lines := strings.Split(out.String(), "\n")
+	for i := range lines {
+		lines[i] = strings.TrimRight(lines[i], " \t\r")
+	}
+	return []byte(strings.Join(lines, "\n")), nil
 }
 
 func main() {
@@ -113,7 +118,7 @@ func automaticIconUsage() map[string]map[int]string {
 	// Derive automatic usage from the public selector, rather than duplicating
 	// its mapping. Include unknown fallback and the extended supported codes.
 	usage := map[string]map[int]string{}
-	codes := []int{-1, 53, 301, 302}
+	codes := []int{-1, 49, 53, 54, 55, 56, 57, 58, 301, 302}
 	for code := 0; code <= 32; code++ {
 		codes = append(codes, code)
 	}

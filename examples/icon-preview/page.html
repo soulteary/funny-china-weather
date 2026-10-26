@@ -30,7 +30,7 @@
 <div class="details"><h2>{{.Key}}</h2><div class="badges"><span class="badge{{if .Automatic}} auto{{end}}">{{if .Automatic}}自动匹配{{else}}仅供直接调用{{end}}</span><span class="badge">{{.Period}}</span><span class="badge">{{.Animation}}</span></div><p class="condition">{{.Description}}</p><p class="codes">天气代码：{{.Codes}}</p></div>
 </article>{{end}}
 </div>
-<div class="note"><p>白天为 05:00（含）至 19:00（不含）。备用资源的数字只表示构图变体。雾与霾、不同强度降雨等可能共用图标，具体天气以文字为准。unknown 是未知代码的自动兜底。</p><p>“暂停动画”同时控制 CSS 动画与浏览器支持的 SVG SMIL 动画；“静态版本”展示 GetStaticIconSVG 的真实输出。系统启用减少动态效果时，默认暂停。查看动画需要点击“继续动画”。unknown 本身没有动画。</p><p>来源：当前工作区 icons/*.svg 与 GetWeatherIconAt 的昼夜映射。本页用于人工检查显示效果，不代表已经通过浏览器动画验证。</p></div>
+<div class="note"><p>白天为 05:00（含）至 19:00（不含）。备用资源的数字只表示构图变体。雾、霾、沙尘及暴雨等级、暴雪已采用独立图案；过渡强度降水仍可能共用图标，具体天气以文字为准。unknown 是未知代码的自动兜底。</p><p>“暂停动画”同时控制 CSS 动画与浏览器支持的 SVG SMIL 动画；“静态版本”展示 GetStaticIconSVG 的真实输出。系统启用减少动态效果时，默认暂停。查看动画需要点击“继续动画”。unknown 本身没有动画。</p><p>来源：当前工作区 icons/*.svg 与 GetWeatherIconAt 的昼夜映射。本页用于人工检查显示效果，不代表已经通过浏览器动画验证。</p></div>
 </main>
 <script>
 (() => {

@@ -9,7 +9,7 @@ type weatherIconPair struct {
 	nightName string
 }
 
-// The available artwork covers fewer distinct conditions than the legend.
+// Intensity ranges share the artwork for their upper precipitation intensity.
 // Shared icons retain the precise description of each weather code.
 var weatherIconsByCode = map[int]weatherIconPair{
 	0:   {"clear-day", "clear-night", "晴", "晴"},
@@ -22,30 +22,36 @@ var weatherIconsByCode = map[int]weatherIconPair{
 	7:   {dayKey: "rain-light", dayName: "小雨"},
 	8:   {dayKey: "rain-moderate", dayName: "中雨"},
 	9:   {dayKey: "rain-heavy", dayName: "大雨"},
-	10:  {dayKey: "rain-heavy", dayName: "暴雨"},
-	11:  {dayKey: "rain-heavy", dayName: "大暴雨"},
-	12:  {dayKey: "rain-heavy", dayName: "特大暴雨"},
+	10:  {dayKey: "rain-storm", dayName: "暴雨"},
+	11:  {dayKey: "rain-storm-severe", dayName: "大暴雨"},
+	12:  {dayKey: "rain-storm-extreme", dayName: "特大暴雨"},
 	13:  {"snow-showers-day", "snow-showers-night", "阵雪", "阵雪"},
 	14:  {dayKey: "snow-light", dayName: "小雪"},
 	15:  {dayKey: "snow-moderate", dayName: "中雪"},
 	16:  {dayKey: "snow-heavy", dayName: "大雪"},
-	17:  {dayKey: "snow-heavy", dayName: "暴雪"},
+	17:  {dayKey: "snow-storm", dayName: "暴雪"},
 	18:  {dayKey: "fog", dayName: "有雾"},
 	19:  {dayKey: "freezing-rain", dayName: "冻雨"},
-	20:  {dayKey: "dust", dayName: "沙尘暴"},
+	20:  {dayKey: "sandstorm", dayName: "沙尘暴"},
 	21:  {dayKey: "rain-moderate", dayName: "小到中雨"},
 	22:  {dayKey: "rain-heavy", dayName: "中到大雨"},
-	23:  {dayKey: "rain-heavy", dayName: "大到暴雨"},
-	24:  {dayKey: "rain-heavy", dayName: "暴雨到大暴雨"},
-	25:  {dayKey: "rain-heavy", dayName: "大暴雨到特大暴雨"},
+	23:  {dayKey: "rain-storm", dayName: "大到暴雨"},
+	24:  {dayKey: "rain-storm-severe", dayName: "暴雨到大暴雨"},
+	25:  {dayKey: "rain-storm-extreme", dayName: "大暴雨到特大暴雨"},
 	26:  {dayKey: "snow-moderate", dayName: "小到中雪"},
 	27:  {dayKey: "snow-heavy", dayName: "中到大雪"},
-	28:  {dayKey: "snow-heavy", dayName: "大到暴雪"},
+	28:  {dayKey: "snow-storm", dayName: "大到暴雪"},
 	29:  {dayKey: "dust", dayName: "浮尘"},
-	30:  {dayKey: "dust", dayName: "扬沙"},
-	31:  {dayKey: "dust", dayName: "强沙尘暴"},
-	32:  {dayKey: "fog", dayName: "浓雾"},
-	53:  {dayKey: "fog", dayName: "霾"},
+	30:  {dayKey: "sand", dayName: "扬沙"},
+	31:  {dayKey: "sandstorm-strong", dayName: "强沙尘暴"},
+	32:  {dayKey: "fog-dense", dayName: "浓雾"},
+	49:  {dayKey: "fog-dense-strong", dayName: "强浓雾"},
+	53:  {dayKey: "haze", dayName: "霾"},
+	54:  {dayKey: "haze-moderate", dayName: "中度霾"},
+	55:  {dayKey: "haze-heavy", dayName: "重度霾"},
+	56:  {dayKey: "haze-severe", dayName: "严重霾"},
+	57:  {dayKey: "fog-heavy", dayName: "大雾"},
+	58:  {dayKey: "fog-dense-extreme", dayName: "特强浓雾"},
 	301: {dayKey: "rain-light", dayName: "雨"},
 	302: {dayKey: "snow-light", dayName: "雪"},
 }
@@ -55,6 +61,9 @@ var weatherIconsByCode = map[int]weatherIconPair{
 // Codes 53 (haze), 301 (rain), and 302 (snow) follow China Weather's official
 // legend at https://www.weather.com.cn/pub/legend.shtml. Supporting those
 // legend codes does not imply that Tencent's observe endpoint emits them.
+// Fog/haze extensions 49 and 54–58 follow the WeatherCode table at
+// https://apidoc.weathercn.com/developers/best-practices.html; Tencent serves
+// day/night image resources for these codes.
 func GetWeatherIconByCode(weatherCode int) (string, string) {
 	return iconByCodeAt(weatherCode, time.Now())
 }
