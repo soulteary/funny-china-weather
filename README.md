@@ -30,10 +30,10 @@
 需要 **Go 1.27.3 或更高版本**。
 
 ```sh
-go get github.com/soulteary/funny-china-weather@main
+go get github.com/soulteary/funny-china-weather@v0.4.0
 ```
 
-以下接口属于当前开发版，安装命令使用 `@main`。
+以下示例适用于 v0.4.0。
 
 **地点选择方式请参考 [腾讯天气](https://tianqi.qq.com/)**：搜索后选中具体的市、区或县，保留该地点对应的省、市、区县字段。同名地点需要结合上级地区确认。
 
