@@ -1,7 +1,7 @@
-# Weather icon names (development version)
+# Weather icon names (v0.3.0)
 
-These changes are not part of the already published v0.2.0. The development
-version uses canonical lowercase keys without `.svg` or a path. Old names
+v0.3.0 replaces the keys shipped in v0.2.0 with canonical lowercase names
+without `.svg` or a path. Old names
 return an empty result / `false`; no compatibility aliases are provided.
 
 ## Naming rules
@@ -135,6 +135,6 @@ The reusable Flare-side test is saved at
 `testdata/flare/canonical_weather_test.go`. To reproduce, copy Flare to a
 temporary directory, put that test in its `internal/settings/weather/`
 directory, and add a local `go.mod` replacement pointing this weather module to
-the development checkout. Run the commands above from that temporary copy.
+the v0.3.0 checkout. Run the commands above from that temporary copy.
 The fixture is under `testdata` so it does not add Flare dependencies to this
 library or its normal tests.
