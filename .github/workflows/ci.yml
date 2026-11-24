@@ -24,7 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+      - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
         with:
           go-version-file: go.mod
           cache: false
@@ -33,9 +33,9 @@ jobs:
           test ! -L .github
           rm -f -- .github/go-test-report.md .github/go-test-report.json .github/coverage.svg .github/goreportcard.svg .github/goreportcard-report.md
       - name: Tests, race detector and coverage report
-        uses: soulteary/go-test-report-action@bf04b539f7bf2a6f67d602da4259904b3dcdeba1 # v1.1.2
+        uses: soulteary/go-test-report-action@2760569379a1c95a195c602872ba00cd61495d89 # v1.1.3
         with:
-          version: v1.1.2
+          version: "v1.1.3"
           packages: ./...
           race: "true"
           cover_mode: atomic
@@ -45,9 +45,9 @@ jobs:
         run: go vet ./...
       - name: Go Report Card
         if: "!cancelled()"
-        uses: soulteary/goreportcard-action@fc43049a5fe61c3313294d217c2a783f375a7970 # v1.1.3
+        uses: soulteary/goreportcard-action@9744d0297ca0116cd4ef83e4ff6f3ba42a65a24d # v1.1.7
         with:
-          version: v1.1.3
+          version: "v1.1.7"
           report: "true"
           threshold: "0"
           commit: "false"
@@ -140,7 +140,7 @@ jobs:
             arch: arm64
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+      - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
         with:
           go-version-file: go.mod
           cache: false
@@ -157,7 +157,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+      - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
         with:
           go-version-file: go.mod
           cache: false
